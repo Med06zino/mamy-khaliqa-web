@@ -1,0 +1,28 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html { scroll-behavior: smooth; }
+  body { @apply bg-ivory text-ink font-sans antialiased; overflow-x: hidden; }
+  h1, h2, h3, h4 { @apply font-display text-ink; }
+  :focus-visible { outline: 2px solid #713F52; outline-offset: 2px; border-radius: 4px; }
+  img { @apply max-w-full; }
+}
+@layer components {
+  .container-page { @apply mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8; }
+  .btn { @apply inline-flex items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 min-h-[44px]; }
+  .btn-primary { @apply bg-plum text-ivory hover:bg-plum-dark; }
+  .btn-secondary { @apply border border-plum text-plum hover:bg-blush; }
+  .btn-ghost { @apply text-plum hover:bg-blush; }
+  .btn-danger { @apply bg-danger text-white hover:opacity-90; }
+  .input { @apply w-full rounded-lg border border-line bg-white px-3.5 py-2.5 text-sm text-ink placeholder:text-muted min-h-[44px]; }
+  .input[aria-invalid="true"] { @apply border-danger; }
+  .card { @apply rounded-2xl border border-line bg-white; }
+  .prose-mk p { @apply mb-4 leading-7 text-muted; }
+  .prose-mk h2 { @apply mb-3 mt-8 text-2xl; }
+  .link { @apply text-plum underline underline-offset-4 hover:text-plum-dark; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
+}
