@@ -5,6 +5,8 @@ import { persist } from "zustand/middleware";
 export interface CartItem {
   key: string; productId: number; variantId: number | null; slug: string; name: string; variantName: string;
   image: string | null; unitPrice: number; quantity: number; maxStock: number;
+  /** Nom de la catégorie — permet d'afficher l'univers (Beauty / Hair) dans le panier. */
+  categoryName: string;
 }
 interface CartState {
   items: CartItem[];

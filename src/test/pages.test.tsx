@@ -9,7 +9,8 @@ import type { ProductListItem } from "../types";
 
 const product: ProductListItem = {
   id: 1, name: "Gloss Rose", slug: "gloss-rose", sku: "G1", price: 5000, compare_at_price: null, volume: "", short_description: "",
-  category: { id: 1, name: "Gloss", slug: "gloss" }, main_image: null, available_stock: 0, stock_status: "out_of_stock", has_variants: false, created_at: "",
+  category: { id: 1, name: "Gloss", slug: "gloss" }, main_image: null, available_stock: 0,
+  stock_status: "out_of_stock", has_variants: false, is_featured: false, created_at: "",
 };
 
 describe("pages", () => {

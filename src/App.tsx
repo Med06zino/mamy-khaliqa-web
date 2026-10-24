@@ -1,7 +1,8 @@
 import { lazy, Suspense, useEffect } from "react";
-import { Route, Routes } from "react-router-dom";
+import { Route, Routes, useLocation } from "react-router-dom";
 
 import { Layout } from "./components/layout/Layout";
+import { PageLoader } from "./components/PageLoader";
 import { RequireAuth } from "./components/RequireAuth";
 import { Spinner } from "./components/ui/States";
 import { ToastHost } from "./components/ui/ToastHost";
@@ -12,33 +13,105 @@ import NotFound from "./pages/NotFound";
 import OrderConfirmation from "./pages/OrderConfirmation";
 import Product from "./pages/Product";
 import Shop from "./pages/Shop";
+import Promotions from "./pages/Promotions";
 import { About, Contact, Delivery, Faq, Privacy, Returns, Terms } from "./pages/Static";
 import { ForgotPassword, Login, Register, ResetPassword } from "./pages/Auth";
-import { AccountHome, AccountLayout, Addresses, Favorites, OrderDetail, Orders, Profile, Security } from "./pages/account/Account";
+import {
+  AccountHome, AccountLayout, Addresses, Favorites,
+  OrderDetail, Orders, Profile, Security,
+} from "./pages/account/Account";
 import { useAuth } from "./store/auth";
 import { useFavorites } from "./store/favorites";
+import { useLoader } from "./store/loader";
 import { useSettings } from "./store/settings";
 
-const AdminLayout = lazy(() => import("./pages/admin/AdminLayout").then((m) => ({ default: m.AdminLayout })));
-const A = (name: string) => lazy(() => import("./pages/admin/AdminPages").then((m) => ({ default: (m as unknown as Record<string, React.ComponentType>)[name] })));
-const AdminDashboard = A("AdminDashboard"), AdminProducts = A("AdminProducts"), AdminOrders = A("AdminOrders"),
-  AdminCustomers = A("AdminCustomers"), AdminReviewsMessages = A("AdminReviewsMessages"), AdminSettings = A("AdminSettings");
+const AdminLayout = lazy(() =>
+  import("./pages/admin/AdminLayout").then((m) => ({ default: m.AdminLayout })),
+);
+const A = (name: string) =>
+  lazy(() =>
+    import("./pages/admin/AdminPages").then((m) => ({
+      default: (m as unknown as Record<string, React.ComponentType>)[name],
+    })),
+  );
+const AdminDashboard    = A("AdminDashboard");
+const AdminProducts     = A("AdminProducts");
+const AdminOrders       = A("AdminOrders");
+const AdminCustomers    = A("AdminCustomers");
+const AdminReviewsMessages = A("AdminReviewsMessages");
+const AdminSettings     = A("AdminSettings");
 
+/* ── Masque le loader HTML natif (index.html) ──────────────── */
+function dismissHtmlLoader() {
+  const el = document.getElementById("mk-loader");
+  if (!el) return;
+  el.classList.add("hidden");
+  // Nettoyage après la transition CSS (450 ms)
+  setTimeout(() => el.remove(), 500);
+}
+
+/* ── Composant interne qui surveille les navigations ──────── */
+function NavigationLoader() {
+  const location = useLocation();
+  const { show, hide } = useLoader();
+
+  useEffect(() => {
+    show();
+    // Le temps minimum garantit que l'animation reste visible
+    const t = setTimeout(() => hide(), 350);
+    return () => { clearTimeout(t); hide(); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.pathname]);
+
+  return null;
+}
+
+/* ═══════════════════════════════════════════════════════════ */
 export default function App() {
-  const loadAuth = useAuth((s) => s.load);
-  const user = useAuth((s) => s.user);
+  const loadAuth     = useAuth((s) => s.load);
+  const user         = useAuth((s) => s.user);
+  const authReady    = useAuth((s) => s.ready);
   const loadSettings = useSettings((s) => s.load);
-  useEffect(() => { loadAuth(); loadSettings(); }, [loadAuth, loadSettings]);
-  useEffect(() => { if (user) useFavorites.getState().load().catch(() => {}); }, [user]);
+  const settingsLoaded = useSettings((s) => s.loaded);
+  const { show, hide, forceHide } = useLoader();
+
+  /* ── Chargement initial : auth + settings ─────────────── */
+  useEffect(() => {
+    show();
+    Promise.all([loadAuth(), loadSettings()]).finally(() => {
+      hide();
+      dismissHtmlLoader();
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  /* Sécurité : si auth et settings sont déjà en cache, forcer
+     la disparition du loader HTML après 100 ms au maximum.   */
+  useEffect(() => {
+    if (authReady && settingsLoaded) {
+      forceHide();
+      dismissHtmlLoader();
+    }
+  }, [authReady, settingsLoaded, forceHide]);
+
+  /* ── Favoris utilisateur ──────────────────────────────── */
+  useEffect(() => {
+    if (user) useFavorites.getState().load().catch(() => {});
+  }, [user]);
 
   return (
     <>
+      {/* Loader React (navigations, actions) */}
+      <PageLoader />
+
       <Suspense fallback={<Spinner />}>
+        <NavigationLoader />
         <Routes>
           <Route element={<Layout />}>
             <Route index element={<Home />} />
             <Route path="boutique" element={<Shop />} />
             <Route path="boutique/categorie/:slug" element={<Shop />} />
+            <Route path="promotions" element={<Promotions />} />
             <Route path="boutique/:slug" element={<Product />} />
             <Route path="panier" element={<Cart />} />
             <Route path="commande" element={<Checkout />} />
@@ -79,6 +152,7 @@ export default function App() {
           </Route>
         </Routes>
       </Suspense>
+
       <ToastHost />
     </>
   );

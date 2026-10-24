@@ -24,15 +24,18 @@ describe("whatsapp", () => {
     expect(u.startsWith("https://wa.me/221770000000?text=")).toBe(true);
     expect(u).toContain(encodeURIComponent("Bonjour & merci\nok"));
   });
-  it("retourne null sans numero configure", () => {
-    expect(whatsappUrl("", "x")).toBeNull();
-    expect(whatsappUrl(undefined, "x")).toBeNull();
+  it("utilise le numéro officiel de secours si aucun numéro n'est configuré", () => {
+    const u1 = whatsappUrl("", "x");
+    const u2 = whatsappUrl(undefined, "x");
+    // Le numéro officiel 221710497804 est utilisé en fallback — le bouton est toujours actif
+    expect(u1).toContain("https://wa.me/221710497804");
+    expect(u2).toContain("https://wa.me/221710497804");
   });
 });
 
 describe("panier", () => {
   beforeEach(() => useCart.getState().clear());
-  const item = { productId: 1, variantId: null, slug: "a", name: "A", variantName: "", image: null, unitPrice: 1000, maxStock: 3 };
+  const item = { productId: 1, variantId: null, slug: "a", name: "A", variantName: "", image: null, unitPrice: 1000, maxStock: 3, categoryName: "Gloss" };
   it("ajoute, cumule et plafonne au stock", () => {
     const { add } = useCart.getState();
     expect(add(item, 2)).toBe("added");

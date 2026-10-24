@@ -3,18 +3,120 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="Mamy Khaliqa : huile pousse-cils, gamme capillaire et gloss. Livraison au Senegal." />
+    <meta name="description" content="Mamy Khaliqa : huile pousse-cils, gamme capillaire et gloss. Livraison au Sénégal." />
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="Mamy Khaliqa" />
-    <meta property="og:title" content="Mamy Khaliqa - Produits cosmetiques" />
-    <meta property="og:description" content="Revelez votre beaute, sublimez votre quotidien." />
+    <meta property="og:title" content="Mamy Khaliqa - Produits cosmétiques" />
+    <meta property="og:description" content="Révélez votre beauté, sublimez votre quotidien." />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <!-- Poppins (grands titres) · Inter (corps) · Plus Jakarta Sans (UI) -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,600;0,700;0,800;1,600;1,700&family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700&display=swap" rel="stylesheet" />
     <title>Mamy Khaliqa</title>
+
+    <style>
+      /* ── Loader initial HTML — visible AVANT que React ne monte ── */
+      #mk-loader {
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 28px;
+        background: #FFFDF9; /* ivory */
+        transition: opacity 0.45s ease, visibility 0.45s ease;
+      }
+      #mk-loader.hidden {
+        opacity: 0;
+        visibility: hidden;
+        pointer-events: none;
+      }
+
+      /* Cercle pétale animé */
+      .mk-ring {
+        position: relative;
+        width: 64px;
+        height: 64px;
+      }
+      .mk-ring::before,
+      .mk-ring::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        border-radius: 50%;
+      }
+      /* Piste de fond */
+      .mk-ring::before {
+        border: 3px solid #EAE0E4; /* line */
+      }
+      /* Arc animé */
+      .mk-ring::after {
+        border: 3px solid transparent;
+        border-top-color: #713F52;  /* plum */
+        border-right-color: #C6A36A; /* champagne */
+        animation: mk-spin 1s cubic-bezier(0.6, 0.2, 0.4, 0.9) infinite;
+      }
+      @keyframes mk-spin {
+        to { transform: rotate(360deg); }
+      }
+
+      /* Nom de la marque */
+      .mk-brand {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 4px;
+      }
+      .mk-brand-name {
+        font-family: "Poppins", "Plus Jakarta Sans", system-ui, sans-serif;
+        font-size: 22px;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+        color: #292329; /* ink */
+        animation: mk-pulse 1.8s ease-in-out infinite;
+      }
+      .mk-brand-sub {
+        font-family: "Plus Jakarta Sans", Inter, system-ui, sans-serif;
+        font-size: 11px;
+        font-weight: 500;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: #746B72; /* muted */
+      }
+      /* Trait champagne décoratif sous le sous-titre */
+      .mk-bar {
+        width: 32px;
+        height: 2px;
+        border-radius: 999px;
+        background: linear-gradient(90deg, #713F52, #C6A36A);
+        margin-top: 6px;
+        animation: mk-bar-grow 1.8s ease-in-out infinite;
+      }
+      @keyframes mk-pulse {
+        0%, 100% { opacity: 1; }
+        50%       { opacity: 0.6; }
+      }
+      @keyframes mk-bar-grow {
+        0%, 100% { width: 32px; }
+        50%       { width: 56px; }
+      }
+    </style>
   </head>
   <body>
+
+    <!-- Loader HTML — retiré par React dès que l'app est prête -->
+    <div id="mk-loader" role="status" aria-label="Chargement de Mamy Khaliqa">
+      <div class="mk-ring" aria-hidden="true"></div>
+      <div class="mk-brand">
+        <span class="mk-brand-name">Mamy Khaliqa</span>
+        <span class="mk-bar" aria-hidden="true"></span>
+        <span class="mk-brand-sub">Hair &amp; Beauty</span>
+      </div>
+    </div>
+
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
