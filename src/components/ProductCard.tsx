@@ -53,7 +53,7 @@ export function ProductCard({ product: p }: Props) {
 
   return (
     <motion.article
-      className="group flex flex-col overflow-hidden rounded-2xl bg-white shadow-card transition-all duration-300 hover:-translate-y-1.5 hover:shadow-card-hover"
+      className="group flex flex-col overflow-hidden rounded-2xl bg-white shadow-card transition-all duration-300 hover:-translate-y-1.5 hover:shadow-card-hover w-full min-w-0"
       aria-label={p.name}
     >
       {/* ── Image ─────────────────────────────────────────── */}
@@ -92,24 +92,24 @@ export function ProductCard({ product: p }: Props) {
       </div>
 
       {/* ── Infos ─────────────────────────────────────────── */}
-      <div className="flex flex-1 flex-col gap-2 p-4">
+      <div className="flex flex-1 flex-col gap-2 p-4 min-w-0">
         {/* Univers (catégorie) */}
-        <p className="text-xs font-medium uppercase tracking-wider text-muted">
+        <p className="text-xs font-medium uppercase tracking-wider text-muted truncate">
           {p.category.name}
         </p>
 
         <h3 className="font-display text-base font-semibold leading-snug text-ink">
-          <Link to={`/boutique/${p.slug}`} className="transition-colors hover:text-plum">
+          <Link to={`/boutique/${p.slug}`} className="transition-colors hover:text-plum break-words">
             {p.name}
           </Link>
         </h3>
 
         {p.short_description && (
-          <p className="line-clamp-1 text-xs text-muted">{p.short_description}</p>
+          <p className="line-clamp-1 text-xs text-muted break-words">{p.short_description}</p>
         )}
 
         {/* Prix */}
-        <div className="flex items-baseline gap-2">
+        <div className="flex items-baseline gap-2 flex-wrap">
           <span className="font-display text-lg font-bold text-plum">{formatPrice(p.price)}</span>
           {p.compare_at_price && (
             <s className="text-xs text-muted">{formatPrice(p.compare_at_price)}</s>

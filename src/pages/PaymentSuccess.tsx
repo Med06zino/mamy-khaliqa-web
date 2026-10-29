@@ -1,9 +1,8 @@
 import { CheckCircle2, Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 
 import { ButtonLink } from "../components/ui/Button";
-import { useApi } from "../hooks/useApi";
 import { formatPrice } from "../lib/format";
 import { useAuth } from "../store/auth";
 import { toast } from "../store/toast";
@@ -11,7 +10,6 @@ import type { Order } from "../types";
 
 export default function PaymentSuccess() {
   const { number } = useParams();
-  const navigate = useNavigate();
   const user = useAuth((s) => s.user);
   const [status, setStatus] = useState<"loading" | "success" | "failed">("loading");
   const [order, setOrder] = useState<Order | null>(null);

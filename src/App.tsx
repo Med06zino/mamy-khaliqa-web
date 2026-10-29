@@ -15,6 +15,7 @@ import PaymentSuccess from "./pages/PaymentSuccess";
 import Product from "./pages/Product";
 import Shop from "./pages/Shop";
 import Promotions from "./pages/Promotions";
+import Prices from "./pages/Prices";
 import { About, Contact, Delivery, Faq, Privacy, Returns, Terms } from "./pages/Static";
 import { ForgotPassword, Login, Register, ResetPassword } from "./pages/Auth";
 import {
@@ -113,6 +114,7 @@ export default function App() {
             <Route path="boutique" element={<Shop />} />
             <Route path="boutique/categorie/:slug" element={<Shop />} />
             <Route path="promotions" element={<Promotions />} />
+            <Route path="tarifs" element={<Prices />} />
             <Route path="boutique/:slug" element={<Product />} />
             <Route path="panier" element={<Cart />} />
             <Route path="commande" element={<Checkout />} />

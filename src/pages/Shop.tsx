@@ -53,7 +53,7 @@ export default function Shop() {
 
   /* Panneau filtres */
   const filtersPanel = (
-    <div className="space-y-5">
+    <div className="space-y-5 min-w-0">
       {!slug && (
         <SelectField label="Catégorie" value={sp.get("category") ?? ""} onChange={(e) => update("category", e.target.value)}>
           <option value="">Toutes les catégories</option>
@@ -90,17 +90,17 @@ export default function Shop() {
   );
 
   return (
-    <div className="container-page py-10">
+    <div className="container-page py-10 min-w-0">
       {/* En-tête */}
-      <div className="mb-8">
-        <h1 className="font-display text-4xl font-bold tracking-tight text-ink">
+      <div className="mb-8 min-w-0">
+        <h1 className="font-display text-4xl font-bold tracking-tight text-ink break-words">
           {current?.name ?? "La boutique"}
         </h1>
         {current?.description && (
           <p className="mt-2 max-w-2xl text-muted">{current.description}</p>
         )}
         {sp.get("search") && (
-          <p className="mt-2 flex items-center gap-2 text-sm text-muted">
+          <p className="mt-2 flex items-center gap-2 text-sm text-muted flex-wrap">
             Résultats pour
             <span className="rounded-full bg-blush px-2.5 py-0.5 font-medium text-ink">
               « {sp.get("search")} »
@@ -109,9 +109,9 @@ export default function Shop() {
         )}
       </div>
 
-      <div className="grid gap-8 lg:grid-cols-[280px_1fr]">
+      <div className="grid gap-8 lg:grid-cols-[280px_1fr] min-w-0">
         {/* Sidebar filtres */}
-        <aside>
+        <aside className="min-w-0">
           {/* Toggle mobile */}
           <button
             className="mb-4 flex w-full items-center justify-between gap-2 rounded-2xl border border-line bg-white px-4 py-3 text-sm font-semibold shadow-xs transition-colors hover:border-plum/40 lg:hidden"
@@ -134,9 +134,9 @@ export default function Shop() {
         </aside>
 
         {/* Produits */}
-        <div>
+        <div className="min-w-0">
           {/* Barre de tri */}
-          <div className="mb-6 flex items-center justify-between gap-4">
+          <div className="mb-6 flex items-center justify-between gap-4 flex-wrap">
             <p className="text-sm text-muted" aria-live="polite">
               {data ? (
                 <span>
@@ -145,7 +145,7 @@ export default function Shop() {
                 </span>
               ) : null}
             </p>
-            <div className="w-52">
+            <div className="w-full sm:w-52 min-w-0">
               <SelectField label="Trier par" value={sp.get("ordering") ?? "-created_at"} onChange={(e) => update("ordering", e.target.value)}>
                 <option value="-created_at">Nouveautés</option>
                 <option value="price">Prix croissant</option>

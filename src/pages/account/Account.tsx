@@ -35,7 +35,7 @@ export function AccountLayout() {
 
   return (
     <div className="container-page grid gap-8 py-10 md:grid-cols-[260px_1fr]">
-      <aside>
+      <aside className="min-w-0">
         <div className="mb-4 rounded-2xl border border-line bg-white p-4 shadow-xs">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-plum/10 font-display text-lg font-bold text-plum">
@@ -48,7 +48,7 @@ export function AccountLayout() {
           </div>
         </div>
 
-        <nav aria-label="Espace client" className="flex gap-1 overflow-x-auto md:flex-col">
+        <nav aria-label="Espace client" className="flex gap-1 overflow-x-auto md:flex-col md:overflow-visible -mx-4 px-4 md:mx-0 md:px-0">
           {NAV_LINKS.map(({ to, label, Icon, end }) => (
             <NavLink key={to} to={to} end={end}
               className={({ isActive }) =>

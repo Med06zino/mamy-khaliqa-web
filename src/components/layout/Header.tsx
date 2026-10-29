@@ -1,6 +1,7 @@
 import { AnimatePresence, motion } from "framer-motion";
 import {
   ChevronDown,
+  Crown,
   Heart,
   Menu,
   Search,
@@ -42,7 +43,7 @@ export function Header() {
     }`;
 
   return (
-    <header className="sticky top-0 z-40 bg-ivory/95 backdrop-blur-md">
+    <header className="sticky top-0 z-50 bg-ivory/95 backdrop-blur-md overflow-visible">
 
       {/* ── Bandeau annonce ───────────────────────────────── */}
       {settings.announcement_active && settings.announcement_text && (
@@ -52,8 +53,8 @@ export function Header() {
       )}
 
       {/* ── Barre principale ──────────────────────────────── */}
-      <div className="border-b border-line/50">
-        <div className="container-page flex h-[70px] items-center gap-6">
+      <div className="border-b border-line/50 overflow-visible">
+        <div className="container-page flex h-[70px] items-center gap-6 overflow-visible">
 
           {/* Burger mobile */}
           <button
@@ -74,6 +75,7 @@ export function Header() {
             {settings.logo && (
               <img src={settings.logo} alt="" className="h-9 w-auto" />
             )}
+            <Crown className="h-5 w-5 text-plum" aria-hidden />
             <span className="font-display text-[1.35rem] font-bold tracking-wide text-plum">
               {settings.name}
             </span>
@@ -82,7 +84,7 @@ export function Header() {
           {/* ── Navigation desktop ────────────────────────── */}
           <nav
             aria-label="Navigation principale"
-            className="ml-2 hidden items-center gap-6 lg:flex"
+            className="ml-2 hidden items-center gap-6 lg:flex overflow-visible"
           >
             <NavLink to="/" end className={({ isActive }) => navCls(isActive)}>
               {({ isActive }) => (
@@ -97,7 +99,7 @@ export function Header() {
 
             {/* Boutique avec sous-menu */}
             <div
-              className="relative"
+              className="relative overflow-visible"
               onMouseEnter={() => setShopOpen(true)}
               onMouseLeave={() => setShopOpen(false)}
             >
@@ -131,7 +133,7 @@ export function Header() {
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: 6, scale: 0.97 }}
                     transition={{ duration: 0.15, ease: "easeOut" }}
-                    className="absolute left-0 top-[calc(100%+12px)] z-50 w-64 overflow-hidden rounded-2xl border border-line bg-white shadow-xl shadow-ink/8"
+                    className="absolute left-0 top-[calc(100%+12px)] z-[100] w-64 overflow-visible rounded-2xl border border-line bg-white shadow-xl shadow-ink/8"
                   >
                     {/* Flèche */}
                     <div className="absolute -top-1.5 left-5 h-3 w-3 rotate-45 border-l border-t border-line bg-white" />
@@ -268,7 +270,7 @@ export function Header() {
       <AnimatePresence>
         {mobileOpen && (
           <motion.div
-            className="fixed inset-0 z-50 lg:hidden"
+            className="fixed inset-0 z-[70] lg:hidden"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -290,7 +292,10 @@ export function Header() {
             >
               {/* Header */}
               <div className="flex items-center justify-between border-b border-line px-5 py-4">
-                <span className="font-display text-lg font-bold text-plum">{settings.name}</span>
+                <div className="flex items-center gap-2">
+                  <Crown className="h-5 w-5 text-plum" aria-hidden />
+                  <span className="font-display text-lg font-bold text-plum">{settings.name}</span>
+                </div>
                 <button
                   onClick={() => setMobileOpen(false)}
                   aria-label="Fermer le menu"

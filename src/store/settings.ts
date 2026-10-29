@@ -7,7 +7,7 @@ const DEFAULTS: StoreSettings = {
   name: "Mamy Khaliqa", tagline: "Révélez votre beauté, sublimez votre quotidien.", logo: null, contact_email: "",
   contact_phone: "", address: "", whatsapp_number: "", instagram_url: "", facebook_url: "", tiktok_url: "",
   announcement_text: "", announcement_active: false, footer_text: "", guest_checkout_enabled: true,
-  payment_cash_on_delivery: false, unknown_zone_policy: "",
+  payment_cash_on_delivery: false, unknown_zone_policy: "", store_pickup_enabled: false,
 };
 interface S { settings: StoreSettings; loaded: boolean; load: () => Promise<void> }
 export const useSettings = create<S>((set) => ({

@@ -1,4 +1,4 @@
-import { CheckCircle2, Clock, Download, Package, XCircle } from "lucide-react";
+import { CheckCircle2, Clock, Download, Package } from "lucide-react";
 import { useLocation, useParams } from "react-router-dom";
 
 import { Button, ButtonLink } from "../components/ui/Button";
