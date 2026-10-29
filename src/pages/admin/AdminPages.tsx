@@ -4,6 +4,7 @@ import { useSearchParams } from "react-router-dom";
 
 import { Button } from "../../components/ui/Button";
 import { CheckField, SelectField, TextArea, TextField } from "../../components/ui/Field";
+import { InvoicePrint } from "../../components/InvoicePrint";
 import { Modal } from "../../components/ui/Modal";
 import { Pagination } from "../../components/ui/Pagination";
 import { EmptyState, ErrorState, Spinner } from "../../components/ui/States";
@@ -57,6 +58,107 @@ const useDebounced = (initial = "") => {
   return [v, setV] as const;
 };
 
+/* ─── DONUT CHART SVG natif ──────────────────────────────────── */
+interface DonutSlice { label: string; value: number; color: string }
+
+function DonutChart({ slices, total }: { slices: DonutSlice[]; total: number }) {
+  const SIZE = 160;
+  const STROKE = 22;
+  const R = (SIZE - STROKE) / 2;
+  const CIRC = 2 * Math.PI * R;
+  const cx = SIZE / 2;
+  const cy = SIZE / 2;
+  const [hovered, setHovered] = useState<number | null>(null);
+
+  let offset = -CIRC / 4; // Démarrer à 12h
+  const paths = slices.map((s, i) => {
+    const fraction = total > 0 ? s.value / total : 0;
+    const dash     = fraction * CIRC;
+    const gap      = CIRC - dash;
+    const path = (
+      <circle
+        key={i}
+        cx={cx} cy={cy} r={R}
+        fill="none"
+        stroke={s.color}
+        strokeWidth={hovered === i ? STROKE + 4 : STROKE}
+        strokeDasharray={`${dash} ${gap}`}
+        strokeDashoffset={-offset}
+        strokeLinecap="round"
+        style={{ transition: "stroke-width .2s, opacity .2s", opacity: hovered !== null && hovered !== i ? 0.35 : 1 }}
+        onMouseEnter={() => setHovered(i)}
+        onMouseLeave={() => setHovered(null)}
+        className="cursor-pointer"
+      />
+    );
+    offset += dash;
+    return path;
+  });
+
+  const hoveredSlice = hovered !== null ? slices[hovered] : null;
+
+  return (
+    <div className="flex flex-col items-center gap-5 sm:flex-row">
+      {/* Donut */}
+      <div className="relative shrink-0">
+        <svg width={SIZE} height={SIZE} aria-label="Répartition des ventes">
+          {/* Piste de fond */}
+          <circle cx={cx} cy={cy} r={R} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth={STROKE} />
+          {paths}
+        </svg>
+        {/* Centre */}
+        <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
+          {hoveredSlice ? (
+            <>
+              <span className="text-xs text-white/50">{hoveredSlice.label.length > 14 ? hoveredSlice.label.slice(0, 14) + "…" : hoveredSlice.label}</span>
+              <span className="font-display text-xl font-bold text-white">{hoveredSlice.value}</span>
+              <span className="text-xs text-white/40">
+                {total > 0 ? `${Math.round(hoveredSlice.value / total * 100)}%` : "—"}
+              </span>
+            </>
+          ) : (
+            <>
+              <span className="text-xs text-white/40">Total</span>
+              <span className="font-display text-2xl font-bold text-white">{total}</span>
+              <span className="text-xs text-white/40">ventes</span>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* Légende */}
+      <ul className="flex-1 space-y-2 text-sm min-w-0">
+        {slices.map((s, i) => (
+          <li
+            key={i}
+            className="flex items-center justify-between gap-2 cursor-pointer rounded-lg px-2 py-1 transition-colors hover:bg-white/6"
+            onMouseEnter={() => setHovered(i)}
+            onMouseLeave={() => setHovered(null)}
+          >
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: s.color }} />
+              <span className="truncate text-white/70">{s.label}</span>
+            </div>
+            <span className="shrink-0 font-semibold text-white">{s.value}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+/* Palette de couleurs pour les tranches */
+const DONUT_COLORS = [
+  "#C6A36A", /* champagne */
+  "#8B5467", /* plum-light */
+  "#5A3242", /* plum-dark */
+  "#EAE0E4", /* line */
+  "#F7E8E8", /* blush */
+  "#2F6B4F", /* success */
+  "#C6A36A88",
+  "#8B546788",
+];
+
 /* ─── DASHBOARD ──────────────────────────────────────────────── */
 export function AdminDashboard() {
   useDocumentTitle("Tableau de bord");
@@ -65,58 +167,82 @@ export function AdminDashboard() {
   if (loading) return <Spinner label="Chargement du tableau de bord…" />;
   if (error || !d) return <ErrorState message={error ?? "Erreur"} onRetry={reload} />;
 
-  const stats: { label: string; value: string | number; accent?: boolean }[] = [
-    { label: "Commandes au total",    value: d.orders_total },
-    { label: "En attente",            value: d.orders_pending,     accent: d.orders_pending > 0 },
-    { label: "En cours",              value: d.orders_in_progress  },
-    { label: "Livrées",               value: d.orders_delivered    },
-    { label: "Chiffre d'affaires",    value: formatPrice(d.revenue_collected), accent: true },
-    { label: "Produits actifs",       value: d.products_active     },
-    { label: "En rupture de stock",   value: d.products_out_of_stock, accent: d.products_out_of_stock > 0 },
-    { label: "Stock faible",          value: d.products_low_stock, accent: d.products_low_stock > 0 },
+  const stats: { label: string; value: string | number; accent?: boolean; sub?: string }[] = [
+    { label: "Commandes", value: d.orders_total, sub: "au total" },
+    { label: "En attente",value: d.orders_pending, accent: d.orders_pending > 0, sub: "à traiter" },
+    { label: "En cours",  value: d.orders_in_progress, sub: "en préparation" },
+    { label: "Livrées",   value: d.orders_delivered, sub: "confirmées" },
+    { label: "Chiffre d'affaires", value: formatPrice(d.revenue_collected), accent: true, sub: "commandes payées" },
+    { label: "Produits actifs", value: d.products_active, sub: "publiés" },
+    { label: "Rupture",   value: d.products_out_of_stock, accent: d.products_out_of_stock > 0, sub: "hors stock" },
+    { label: "Stock faible", value: d.products_low_stock, accent: d.products_low_stock > 0, sub: `≤ seuil` },
   ];
+
+  // Prépare les tranches du donut à partir des top_products réels
+  const totalSold = d.top_products.reduce((s, p) => s + p.sold, 0);
+  const donutSlices: DonutSlice[] = d.top_products.slice(0, 7).map((p, i) => ({
+    label: p.product_name,
+    value: p.sold,
+    color: DONUT_COLORS[i % DONUT_COLORS.length],
+  }));
 
   return (
     <>
       <PageTitle>Tableau de bord</PageTitle>
 
-      {/* Statistiques dynamiques — toutes issues de l'API */}
+      {/* ── KPIs ── */}
       <dl className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        {stats.map(({ label, value, accent }) => (
-          <AdminCard key={label}>
+        {stats.map(({ label, value, accent, sub }) => (
+          <AdminCard key={label} className="flex flex-col gap-1">
             <dt className="text-xs font-semibold uppercase tracking-wider text-white/40">{label}</dt>
-            <dd className={`mt-2 font-display text-2xl font-bold ${accent ? "text-champagne" : "text-white"}`}>
+            <dd className={`font-display text-2xl font-bold ${accent ? "text-champagne" : "text-white"}`}>
               {value}
             </dd>
+            {sub && <p className="text-xs text-white/25">{sub}</p>}
           </AdminCard>
         ))}
       </dl>
 
-      {/* Top produits */}
-      <h2 className="mb-4 mt-10 font-display text-lg font-bold text-white">Produits les plus vendus</h2>
-      {d.top_products.length ? (
-        <AdminTable head={["Produit", "Quantité vendue"]}>
-          {d.top_products.map((t, i) => (
-            <tr key={t.product_name}>
-              <td>
-                <div className="flex items-center gap-3">
-                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-plum/20 text-xs font-bold text-plum-light">
+      {/* ── Graphique donut + liste ── */}
+      <div className="mt-8 grid gap-6 lg:grid-cols-[1fr_auto]">
+        <AdminCard>
+          <h2 className="mb-5 font-display text-base font-bold text-white">
+            Répartition des ventes par produit
+          </h2>
+          {d.top_products.length > 0 ? (
+            <DonutChart slices={donutSlices} total={totalSold} />
+          ) : (
+            <p className="rounded-xl bg-white/4 px-4 py-6 text-center text-sm text-white/40">
+              Aucune vente enregistrée pour le moment.
+            </p>
+          )}
+        </AdminCard>
+
+        {/* Classement numéroté */}
+        {d.top_products.length > 0 && (
+          <AdminCard className="min-w-[220px]">
+            <h2 className="mb-4 font-display text-base font-bold text-white">Top 5</h2>
+            <ol className="space-y-3">
+              {d.top_products.slice(0, 5).map((t, i) => (
+                <li key={t.product_name} className="flex items-center gap-3">
+                  <span
+                    className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg text-xs font-bold"
+                    style={{ background: DONUT_COLORS[i % DONUT_COLORS.length] + "25", color: DONUT_COLORS[i % DONUT_COLORS.length] }}
+                  >
                     {i + 1}
                   </span>
-                  {t.product_name}
-                </div>
-              </td>
-              <td className="font-semibold text-champagne">{t.sold}</td>
-            </tr>
-          ))}
-        </AdminTable>
-      ) : (
-        <p className="rounded-xl bg-white/4 px-4 py-3 text-sm text-white/40">
-          Aucune vente enregistrée pour le moment.
-        </p>
-      )}
+                  <span className="flex-1 truncate text-sm text-white/70" title={t.product_name}>
+                    {t.product_name}
+                  </span>
+                  <span className="shrink-0 text-sm font-semibold text-champagne">{t.sold}</span>
+                </li>
+              ))}
+            </ol>
+          </AdminCard>
+        )}
+      </div>
 
-      <p className="mt-4 text-xs text-white/30">
+      <p className="mt-4 text-xs text-white/25">
         Le chiffre d'affaires ne compte que les commandes marquées comme payées.
       </p>
     </>
@@ -149,12 +275,20 @@ export function AdminProducts() {
     `/admin/products/?page=${page}&page_size=15${sp.get("search") ? `&search=${encodeURIComponent(sp.get("search")!)}` : ""}`,
   );
   const cats    = useApi<Category[]>("/admin/categories/");
-  const [editing, setEditing] = useState<AdminProduct | "new" | null>(null);
+  const [editing, setEditing]   = useState<AdminProduct | "new" | null>(null);
+  const [toDelete, setToDelete] = useState<AdminProduct | null>(null);
 
-  const remove = async (p: AdminProduct) => {
-    if (!window.confirm(`Supprimer « ${p.name} » ? S'il figure dans des commandes, il sera archivé.`)) return;
-    try { await del(`/admin/products/${p.id}/`); toast.success("Produit supprimé ou archivé."); reload(); }
-    catch (e) { toast.error(errorMessage(e)); }
+  const confirmDelete = async () => {
+    if (!toDelete) return;
+    try {
+      await del(`/admin/products/${toDelete.id}/`);
+      toast.success(`« ${toDelete.name} » supprimé ou archivé.`);
+      setToDelete(null);
+      reload();
+    } catch (e) {
+      toast.error(errorMessage(e));
+      setToDelete(null);
+    }
   };
 
   return (
@@ -208,7 +342,7 @@ export function AdminProducts() {
                         <Pencil className="h-3.5 w-3.5" aria-hidden />
                       </button>
                       <button
-                        onClick={() => remove(p)}
+                        onClick={() => setToDelete(p)}
                         aria-label={`Supprimer ${p.name}`}
                         className="rounded-lg p-1.5 text-white/40 transition-colors hover:bg-red-500/15 hover:text-red-400"
                       >
@@ -239,6 +373,26 @@ export function AdminProducts() {
           onClose={() => { setEditing(null); reload(); }}
         />
       )}
+
+      {/* Modal confirmation suppression produit */}
+      <Modal
+        open={!!toDelete}
+        onClose={() => setToDelete(null)}
+        title="Supprimer le produit"
+      >
+        <p className="text-sm text-muted">
+          Supprimer <span className="font-semibold text-ink">« {toDelete?.name} »</span> ?
+          S'il figure dans des commandes existantes, il sera archivé automatiquement.
+        </p>
+        <div className="mt-6 flex gap-3">
+          <Button variant="danger" className="flex-1" onClick={confirmDelete}>
+            Supprimer
+          </Button>
+          <Button variant="secondary" className="flex-1" onClick={() => setToDelete(null)}>
+            Annuler
+          </Button>
+        </div>
+      </Modal>
     </>
   );
 }
@@ -525,6 +679,8 @@ function OrderModal({ number, onClose }: { number: string; onClose: () => void }
   const [tracking, setTracking] = useState<string | null>(null);
   const [fee,  setFee]  = useState("");
   const [note, setNote] = useState("");
+  const [confirmCancel, setConfirmCancel] = useState(false);
+  const [confirmPaid,   setConfirmPaid]   = useState(false);
 
   const send = async (body: object, msg: string) => {
     try { await patch(`/admin/orders/${number}/update/`, body); toast.success(msg); reload(); }
@@ -588,7 +744,7 @@ function OrderModal({ number, onClose }: { number: string; onClose: () => void }
             </div>
           )}
 
-          {/* Changement de statut — utilise allowed_transitions de l'API */}
+          {/* Changement de statut */}
           <div>
             <div className="mb-2 flex items-center gap-2">
               <p className="font-semibold text-ink">Statut :</p>
@@ -603,7 +759,7 @@ function OrderModal({ number, onClose }: { number: string; onClose: () => void }
                   key={s}
                   variant={s === "cancelled" ? "danger" : "primary"}
                   onClick={() => {
-                    if (s === "cancelled" && !window.confirm("Annuler la commande ? Le stock sera restitué.")) return;
+                    if (s === "cancelled") { setConfirmCancel(true); return; }
                     send({ status: s, note }, `Statut : ${label(s)}`);
                     setNote("");
                   }}
@@ -618,10 +774,7 @@ function OrderModal({ number, onClose }: { number: string; onClose: () => void }
           <div className="flex flex-wrap items-center gap-3">
             <span className="font-semibold text-ink">Paiement : {o.payment_status_label}</span>
             {o.payment_status !== "paid" && o.status !== "cancelled" && (
-              <Button
-                variant="secondary"
-                onClick={() => { if (window.confirm("Confirmer que le paiement a bien été reçu ?")) send({ payment_status: "paid" }, "Commande marquée payée."); }}
-              >
+              <Button variant="secondary" onClick={() => setConfirmPaid(true)}>
                 Marquer comme payée
               </Button>
             )}
@@ -641,6 +794,18 @@ function OrderModal({ number, onClose }: { number: string; onClose: () => void }
             </Button>
           </div>
 
+          {/* Facture — copie admin */}
+          <div className="rounded-xl border border-white/10 bg-white/4 px-4 py-3">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-white/40">
+              Facture
+            </p>
+            <InvoicePrint
+              order={o}
+              variant="admin"
+              label="Télécharger la facture client"
+            />
+          </div>
+
           {/* Historique */}
           <div>
             <p className="mb-3 font-semibold text-ink">Historique</p>
@@ -654,6 +819,61 @@ function OrderModal({ number, onClose }: { number: string; onClose: () => void }
               ))}
             </ol>
           </div>
+
+          {/* Modal confirmation annulation */}
+          <Modal
+            open={confirmCancel}
+            onClose={() => setConfirmCancel(false)}
+            title="Annuler la commande"
+          >
+            <p className="text-sm text-muted">
+              Annuler la commande <span className="font-semibold text-ink">{number}</span> ?
+              Le stock sera restitué automatiquement.
+            </p>
+            <div className="mt-6 flex gap-3">
+              <Button
+                variant="danger"
+                className="flex-1"
+                onClick={() => {
+                  send({ status: "cancelled", note }, "Commande annulée. Stock restitué.");
+                  setNote("");
+                  setConfirmCancel(false);
+                }}
+              >
+                Oui, annuler
+              </Button>
+              <Button variant="secondary" className="flex-1" onClick={() => setConfirmCancel(false)}>
+                Garder
+              </Button>
+            </div>
+          </Modal>
+
+          {/* Modal confirmation paiement */}
+          <Modal
+            open={confirmPaid}
+            onClose={() => setConfirmPaid(false)}
+            title="Confirmer le paiement"
+          >
+            <p className="text-sm text-muted">
+              Confirmer que le paiement de la commande{" "}
+              <span className="font-semibold text-ink">{number}</span> a bien été reçu ?
+            </p>
+            <div className="mt-6 flex gap-3">
+              <Button
+                variant="primary"
+                className="flex-1"
+                onClick={() => {
+                  send({ payment_status: "paid" }, "Commande marquée payée.");
+                  setConfirmPaid(false);
+                }}
+              >
+                Confirmer
+              </Button>
+              <Button variant="secondary" className="flex-1" onClick={() => setConfirmPaid(false)}>
+                Annuler
+              </Button>
+            </div>
+          </Modal>
         </div>
       )}
     </Modal>
@@ -1008,10 +1228,11 @@ const EMPTY_BANNER: Record<string, string | boolean> = {
 
 function Banners() {
   const { data, loading, error, reload } = useApi<AdminBanner[]>("/admin/banners/");
-  const [editing, setEditing] = useState<(AdminBanner & { _file?: File }) | "new" | null>(null);
-  const [err, setErr]         = useState<ApiError | null>(null);
-  const [busy, setBusy]       = useState(false);
-  const [f, setF]             = useState<Record<string, string | boolean>>(EMPTY_BANNER);
+  const [editing, setEditing]     = useState<(AdminBanner & { _file?: File }) | "new" | null>(null);
+  const [toDelete, setToDelete]   = useState<AdminBanner | null>(null);
+  const [err, setErr]             = useState<ApiError | null>(null);
+  const [busy, setBusy]           = useState(false);
+  const [f, setF]                 = useState<Record<string, string | boolean>>(EMPTY_BANNER);
 
   const openNew  = () => { setF(EMPTY_BANNER); setErr(null); setEditing("new"); };
   const openEdit = (b: AdminBanner) => {
@@ -1052,9 +1273,9 @@ function Banners() {
     } finally { setBusy(false); }
   };
 
-  const remove = async (id: number) => {
-    if (!window.confirm("Supprimer cette bannière ?")) return;
-    try { await del(`/admin/banners/${id}/`); reload(); }
+  const remove = async (b: AdminBanner) => {
+    setToDelete(null);
+    try { await del(`/admin/banners/${b.id}/`); toast.success(`Bannière « ${b.title} » supprimée.`); reload(); }
     catch (e) { toast.error(errorMessage(e)); }
   };
 
@@ -1094,7 +1315,7 @@ function Banners() {
                     className="rounded-lg p-1.5 text-white/40 hover:bg-white/8 hover:text-white">
                     <Pencil className="h-3.5 w-3.5" aria-hidden />
                   </button>
-                  <button onClick={() => remove(b.id)} aria-label={`Supprimer ${b.title}`}
+                  <button onClick={() => setToDelete(b)} aria-label={`Supprimer ${b.title}`}
                     className="rounded-lg p-1.5 text-white/40 hover:bg-red-500/15 hover:text-red-400">
                     <Trash2 className="h-3.5 w-3.5" aria-hidden />
                   </button>
@@ -1146,6 +1367,27 @@ function Banners() {
           </form>
         </Modal>
       )}
+
+      {/* Modal confirmation suppression bannière */}
+      <Modal
+        open={!!toDelete}
+        onClose={() => setToDelete(null)}
+        title="Supprimer la bannière"
+      >
+        <p className="text-sm text-muted">
+          Supprimer la bannière{" "}
+          <span className="font-semibold text-ink">« {toDelete?.title} »</span> ?
+          Cette action est irréversible.
+        </p>
+        <div className="mt-6 flex gap-3">
+          <Button variant="danger" className="flex-1" onClick={() => toDelete && remove(toDelete)}>
+            Supprimer
+          </Button>
+          <Button variant="secondary" className="flex-1" onClick={() => setToDelete(null)}>
+            Annuler
+          </Button>
+        </div>
+      </Modal>
     </section>
   );
 }

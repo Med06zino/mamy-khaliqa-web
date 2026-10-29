@@ -8,6 +8,7 @@ import { EmptyState } from "../components/ui/States";
 import { useApi, useDocumentTitle } from "../hooks/useApi";
 import { ApiError, errorMessage, post } from "../lib/api";
 import { formatPrice } from "../lib/format";
+import { getCommunesByRegion, SENEGAL_REGIONS } from "../lib/senegal";
 import { useAuth } from "../store/auth";
 import { cartSubtotal, useCart } from "../store/cart";
 import { useSettings } from "../store/settings";
@@ -46,7 +47,8 @@ export default function Checkout() {
   const [err,  setErr]  = useState<ApiError | null>(null);
   const [f, setF] = useState({
     first_name: "", last_name: "", email: "", phone: "",
-    address_line: "", city: "", zone: "", note: "",
+    address_line: "", region: "Dakar", city: "", zone: "", note: "",
+    payment_method: "saspay",
   });
 
   useEffect(() => {
@@ -100,16 +102,36 @@ export default function Checkout() {
     e.preventDefault();
     if (!f.zone) { toast.error("Choisissez votre zone de livraison."); return; }
     setBusy(true); setErr(null);
+    const cityFull = f.city ? `${f.city}, ${f.region}` : f.region;
     try {
       const order = await post<Order>("/orders/", {
         items: items.map((i) => ({ product_id: i.productId, variant_id: i.variantId, quantity: i.quantity })),
         first_name: f.first_name, last_name: f.last_name, email: f.email, phone: f.phone,
-        address_line: f.address_line, city: f.city,
+        address_line: f.address_line, city: cityFull,
         delivery_zone: unknownZone ? null : Number(f.zone),
         customer_note: f.note, source: "web",
+        payment_method: f.payment_method,
       }, { "Idempotency-Key": key.current });
-      clear();
-      navigate(`/commande/confirmation/${order.number}`, { state: { order } });
+
+      // Si paiement SasPay, créer la session et rediriger
+      if (f.payment_method === "saspay") {
+        try {
+          const session = await post<{ checkout_url: string }>(`/payments/${order.number}/saspay/create/`, {});
+          clear();
+          // Rediriger vers la page de paiement SasPay
+          window.location.href = session.checkout_url;
+        } catch (saspayError) {
+          if (saspayError instanceof ApiError) {
+            toast.error(errorMessage(saspayError));
+            setBusy(false);
+            return;
+          }
+        }
+      } else {
+        // Paiement à la livraison ou autre
+        clear();
+        navigate(`/commande/confirmation/${order.number}`, { state: { order } });
+      }
     } catch (er) {
       if (er instanceof ApiError) setErr(er);
       toast.error(errorMessage(er));
@@ -158,17 +180,80 @@ export default function Checkout() {
                 ))}
               </SelectField>
             )}
-            <TextField label="Adresse" required value={f.address_line} onChange={set("address_line")} error={err?.field("address_line")} autoComplete="street-address" />
+            <TextField
+              label="Adresse (rue, numéro, bâtiment…)"
+              required
+              value={f.address_line}
+              onChange={set("address_line")}
+              error={err?.field("address_line")}
+              autoComplete="street-address"
+              placeholder="Ex : Rue 10, Villa 3"
+            />
             <div className="grid gap-4 sm:grid-cols-2">
-              <TextField label="Ville" value={f.city} onChange={set("city")} error={err?.field("city")} autoComplete="address-level2" />
-              <SelectField label="Zone de livraison" required value={f.zone} onChange={set("zone")} error={err?.field("delivery_zone")}>
-                <option value="">Choisir une zone</option>
-                {zones.data?.map((z) => (
-                  <option key={z.id} value={z.id}>{z.name} ({formatPrice(z.fee)})</option>
+              {/* Région du Sénégal */}
+              <SelectField
+                label="Région"
+                value={f.region}
+                onChange={(e) => setF({ ...f, region: e.target.value, city: "" })}
+              >
+                {SENEGAL_REGIONS.map((r) => (
+                  <option key={r} value={r}>{r}</option>
                 ))}
-                <option value="other">Autre zone (frais à confirmer)</option>
               </SelectField>
+
+              {/* Commune / Quartier */}
+              {getCommunesByRegion(f.region).length > 0 ? (
+                <SelectField
+                  label="Commune / Quartier"
+                  value={f.city}
+                  onChange={set("city")}
+                  error={err?.field("city")}
+                >
+                  <option value="">Choisir un quartier</option>
+                  {getCommunesByRegion(f.region).map((c) => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </SelectField>
+              ) : (
+                <TextField
+                  label="Ville / Commune"
+                  value={f.city}
+                  onChange={set("city")}
+                  error={err?.field("city")}
+                  autoComplete="address-level2"
+                  placeholder="Ex : Centre-ville"
+                />
+              )}
             </div>
+
+            {/* Zone de livraison */}
+            <SelectField
+              label="Zone de livraison"
+              required
+              value={f.zone}
+              onChange={set("zone")}
+              error={err?.field("delivery_zone")}
+            >
+              <option value="">Choisir une zone</option>
+              {zones.data?.map((z) => (
+                <option key={z.id} value={z.id}>{z.name} ({formatPrice(z.fee)})</option>
+              ))}
+              <option value="other">Autre zone (frais à confirmer)</option>
+            </SelectField>
+
+            {/* Délai estimé pour la zone choisie */}
+            {zone && (
+              <div className="flex items-center gap-2 rounded-xl bg-success/6 px-4 py-2.5 text-sm">
+                <span className="text-success">
+                  <svg className="inline h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  Délai estimé : <strong>{zone.delivery_label}</strong>
+                </span>
+                {zone.info && <span className="text-muted"> · {zone.info}</span>}
+              </div>
+            )}
+
             {unknownZone && (
               <div className="rounded-xl bg-blush px-4 py-3 text-sm text-muted">
                 {settings.unknown_zone_policy || "Les frais de livraison vous seront confirmés par la boutique."}
@@ -179,22 +264,48 @@ export default function Checkout() {
 
           {/* Paiement */}
           <SectionCard icon={CreditCard} title="Règlement">
-            {settings.payment_cash_on_delivery ? (
-              <div className="flex items-start gap-3 rounded-xl bg-success/6 px-4 py-3">
-                <CreditCard className="mt-0.5 h-4 w-4 shrink-0 text-success" aria-hidden />
-                <p className="text-sm text-ink">
-                  <span className="font-semibold">Paiement à la livraison.</span>{" "}
-                  Le règlement est effectué à la réception de votre commande.
-                </p>
-              </div>
-            ) : (
-              <div className="flex items-start gap-3 rounded-xl bg-blush px-4 py-3">
-                <CreditCard className="mt-0.5 h-4 w-4 shrink-0 text-plum" aria-hidden />
-                <p className="text-sm text-muted">
-                  Aucun paiement en ligne n'est demandé maintenant. La boutique vous contacte pour confirmer la commande et convenir du règlement.
-                </p>
-              </div>
-            )}
+            <div className="space-y-3">
+              <label className="flex items-start gap-3 rounded-xl border border-line px-4 py-3 cursor-pointer hover:border-plum/50 transition-colors">
+                <input
+                  type="radio"
+                  name="payment_method"
+                  value="saspay"
+                  checked={f.payment_method === "saspay"}
+                  onChange={set("payment_method")}
+                  className="mt-1 h-4 w-4 accent-plum"
+                />
+                <div className="flex-1">
+                  <p className="text-sm font-semibold text-ink">Payer en ligne avec SasPay</p>
+                  <p className="text-xs text-muted">Mobile money et carte bancaire sécurisés</p>
+                </div>
+              </label>
+
+              {settings.payment_cash_on_delivery && (
+                <label className="flex items-start gap-3 rounded-xl border border-line px-4 py-3 cursor-pointer hover:border-plum/50 transition-colors">
+                  <input
+                    type="radio"
+                    name="payment_method"
+                    value="cash_on_delivery"
+                    checked={f.payment_method === "cash_on_delivery"}
+                    onChange={set("payment_method")}
+                    className="mt-1 h-4 w-4 accent-plum"
+                  />
+                  <div className="flex-1">
+                    <p className="text-sm font-semibold text-ink">Paiement à la livraison</p>
+                    <p className="text-xs text-muted">Règlement à la réception de votre commande</p>
+                  </div>
+                </label>
+              )}
+
+              {!settings.payment_cash_on_delivery && f.payment_method !== "saspay" && (
+                <div className="flex items-start gap-3 rounded-xl bg-blush px-4 py-3">
+                  <CreditCard className="mt-0.5 h-4 w-4 shrink-0 text-plum" aria-hidden />
+                  <p className="text-sm text-muted">
+                    Aucun paiement en ligne n'est demandé maintenant. La boutique vous contacte pour confirmer la commande et convenir du règlement.
+                  </p>
+                </div>
+              )}
+            </div>
           </SectionCard>
         </div>
 

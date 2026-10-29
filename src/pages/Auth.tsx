@@ -371,8 +371,10 @@ export function Register() {
     setErrs(null);
     try {
       await register(f);
-      toast.success("Compte créé. Bienvenue !");
-      nav("/compte", { replace: true });
+      // Après inscription, rediriger vers la connexion avec un message de succès.
+      // L'utilisateur confirme son identité en se connectant explicitement.
+      toast.success("Compte créé ! Connectez-vous pour accéder à votre espace.");
+      nav("/connexion", { replace: true });
     } catch (er) {
       if (er instanceof ApiError) setErrs(er);
       toast.error(errorMessage(er));

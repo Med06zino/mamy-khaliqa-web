@@ -11,6 +11,7 @@ import Checkout from "./pages/Checkout";
 import Home from "./pages/Home";
 import NotFound from "./pages/NotFound";
 import OrderConfirmation from "./pages/OrderConfirmation";
+import PaymentSuccess from "./pages/PaymentSuccess";
 import Product from "./pages/Product";
 import Shop from "./pages/Shop";
 import Promotions from "./pages/Promotions";
@@ -116,6 +117,7 @@ export default function App() {
             <Route path="panier" element={<Cart />} />
             <Route path="commande" element={<Checkout />} />
             <Route path="commande/confirmation/:number" element={<OrderConfirmation />} />
+            <Route path="commande/paiement/succes/:number" element={<PaymentSuccess />} />
             <Route path="a-propos" element={<About />} />
             <Route path="contact" element={<Contact />} />
             <Route path="faq" element={<Faq />} />

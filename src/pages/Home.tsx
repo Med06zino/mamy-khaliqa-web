@@ -305,7 +305,7 @@ export default function Home() {
               {/* ── Colonne image ─────────────────────────── */}
               <div className="relative order-1 min-h-[260px] overflow-hidden md:order-2 md:min-h-0">
                 <img
-                  src="/placeholder/hero.jpeg"
+                  src="/placeholder/hero2.jfif"
                   alt="Sélection de produits cosmétiques Mamy Khaliqa"
                   loading="eager"
                   decoding="async"

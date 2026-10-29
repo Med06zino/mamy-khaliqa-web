@@ -1,7 +1,7 @@
-import { CheckCircle2, Package } from "lucide-react";
+import { CheckCircle2, Clock, Download, Package, XCircle } from "lucide-react";
 import { useLocation, useParams } from "react-router-dom";
 
-import { ButtonLink } from "../components/ui/Button";
+import { Button, ButtonLink } from "../components/ui/Button";
 import { WhatsAppButton } from "../components/WhatsAppButton";
 import { useDocumentTitle } from "../hooks/useApi";
 import { formatPrice } from "../lib/format";
@@ -13,6 +13,34 @@ export default function OrderConfirmation() {
   const { number } = useParams();
   const order = (useLocation().state as { order?: Order } | null)?.order;
   const user  = useAuth((s) => s.user);
+
+  // Déterminer le statut de paiement
+  const isPaid = order?.payment_status === "paid";
+  const isSasPay = order?.payment_method === "saspay";
+
+  // Télécharger la facture
+  const downloadInvoice = async () => {
+    if (!number) return;
+    try {
+      const response = await fetch(`/api/v1/orders/${number}/invoice/download/`, {
+        credentials: "include",
+      });
+      if (!response.ok) throw new Error("Erreur lors du téléchargement");
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `Facture_${number}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (error) {
+      console.error("Erreur téléchargement facture:", error);
+      alert("Erreur lors du téléchargement de la facture. Réessayez plus tard.");
+    }
+  };
 
   return (
     <div className="container-page max-w-2xl py-16">
@@ -27,9 +55,25 @@ export default function OrderConfirmation() {
           <Package className="h-4 w-4 text-plum" aria-hidden />
           <span className="font-display text-2xl font-bold tracking-tight text-plum">{number}</span>
         </div>
-        <p className="mx-auto mt-4 max-w-md text-sm leading-relaxed text-muted">
-          Conservez cette référence. La boutique vous contactera pour confirmer la commande. Le paiement n'a pas encore été effectué.
-        </p>
+
+        {/* Message selon le statut de paiement */}
+        {isSasPay && !isPaid && (
+          <p className="mx-auto mt-4 max-w-md text-sm leading-relaxed text-muted">
+            <Clock className="inline h-4 w-4 mr-1" aria-hidden />
+            Paiement en attente via SasPay. Votre commande sera confirmée automatiquement une fois le paiement validé.
+          </p>
+        )}
+        {isSasPay && isPaid && (
+          <p className="mx-auto mt-4 max-w-md text-sm leading-relaxed text-muted">
+            <CheckCircle2 className="inline h-4 w-4 mr-1 text-success" aria-hidden />
+            Paiement confirmé via SasPay. Votre commande sera traitée prochainement.
+          </p>
+        )}
+        {!isSasPay && (
+          <p className="mx-auto mt-4 max-w-md text-sm leading-relaxed text-muted">
+            Conservez cette référence. La boutique vous contactera pour confirmer la commande.
+          </p>
+        )}
       </div>
 
       {/* ── Détail commande ───────────────────────────────────── */}
@@ -77,6 +121,22 @@ export default function OrderConfirmation() {
                 <span className="font-display font-bold text-ink">Total</span>
                 <span className="font-display text-lg font-bold text-plum">{formatPrice(order.total)}</span>
               </div>
+
+              {/* Statut de paiement */}
+              <div className="flex justify-between items-center pt-2">
+                <span className="text-muted">Statut du paiement</span>
+                {isPaid ? (
+                  <span className="flex items-center gap-1 rounded-full bg-success/10 px-3 py-1 text-xs font-semibold text-success">
+                    <CheckCircle2 className="h-3 w-3" aria-hidden />
+                    Payé
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-1 rounded-full bg-blush px-3 py-1 text-xs font-semibold text-muted">
+                    <Clock className="h-3 w-3" aria-hidden />
+                    En attente
+                  </span>
+                )}
+              </div>
             </div>
 
             {/* WhatsApp */}
@@ -96,6 +156,12 @@ export default function OrderConfirmation() {
                 Facultatif : la commande est déjà enregistrée. Ce message ajoute simplement votre référence dans une conversation.
               </p>
             </div>
+
+            {/* Télécharger facture */}
+            <Button onClick={downloadInvoice} variant="secondary" className="w-full">
+              <Download className="h-4 w-4 mr-2" aria-hidden />
+              Télécharger ma facture PDF
+            </Button>
           </div>
         </div>
       )}

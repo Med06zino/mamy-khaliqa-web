@@ -72,7 +72,15 @@ export interface Address {
   line1: string; city: string;
   delivery_zone: number | null; delivery_zone_name?: string; is_default: boolean;
 }
-export interface DeliveryZone { id: number; name: string; fee: number; info: string }
+export interface DeliveryZone {
+  id: number;
+  name: string;
+  fee: number;
+  info: string;
+  delivery_days_min: number;
+  delivery_days_max: number;
+  delivery_label: string;
+}
 
 /* ── Paramètres boutique ────────────────────────────────────── */
 export interface StoreSettings {
@@ -90,6 +98,9 @@ export type OrderStatus =
   | "pending" | "confirmed" | "preparing"
   | "shipped" | "delivered" | "cancelled";
 
+/** Statuts de paiement — correspondent aux valeurs du backend (Order.PaymentStatus) */
+export type PaymentStatus = "unpaid" | "paid" | "refunded";
+
 export interface OrderItem {
   id: number; product: number | null; product_slug: string | null;
   product_name: string; product_sku: string;
@@ -97,7 +108,8 @@ export interface OrderItem {
 }
 export interface OrderListItem {
   number: string; status: OrderStatus; status_label: string;
-  payment_status: string; payment_status_label: string;
+  payment_status: PaymentStatus; payment_status_label: string;
+  payment_method: string;
   total: number; created_at: string; items_count: number;
   first_name: string; last_name: string; phone: string;
 }
@@ -106,6 +118,8 @@ export interface Order extends Omit<OrderListItem, "items_count"> {
   delivery_zone_name: string; customer_note: string;
   subtotal: number; delivery_fee: number; delivery_fee_pending: boolean;
   tracking_info: string;
+  /** Libellé lisible de la méthode de paiement (ex : "Paiement à la livraison") */
+  payment_method_label: string;
   items: OrderItem[];
   history: { status: OrderStatus; status_label: string; note: string; created_at: string }[];
   allowed_transitions: OrderStatus[];
