@@ -49,6 +49,7 @@ export default function Checkout() {
     first_name: "", last_name: "", email: "", phone: "",
     address_line: "", region: "Dakar", city: "", zone: "", note: "",
     payment_method: "saspay",
+    delivery_type: "delivery", // "delivery" or "pickup"
   });
 
   useEffect(() => {
@@ -68,7 +69,8 @@ export default function Checkout() {
   const zone        = zones.data?.find((z) => String(z.id) === f.zone);
   const fee         = zone?.fee ?? null;
   const unknownZone = f.zone === "other";
-  const total       = useMemo(() => subtotal + (fee ?? 0), [subtotal, fee]);
+  const isPickup    = f.delivery_type === "pickup";
+  const total       = useMemo(() => subtotal + (isPickup ? 0 : (fee ?? 0)), [subtotal, fee, isPickup]);
 
   /* Guards */
   if (!user && !settings.guest_checkout_enabled) {
@@ -100,15 +102,16 @@ export default function Checkout() {
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!f.zone) { toast.error("Choisissez votre zone de livraison."); return; }
+    if (!isPickup && !f.zone) { toast.error("Choisissez votre zone de livraison."); return; }
     setBusy(true); setErr(null);
     const cityFull = f.city ? `${f.city}, ${f.region}` : f.region;
     try {
       const order = await post<Order>("/orders/", {
         items: items.map((i) => ({ product_id: i.productId, variant_id: i.variantId, quantity: i.quantity })),
         first_name: f.first_name, last_name: f.last_name, email: f.email, phone: f.phone,
-        address_line: f.address_line, city: cityFull,
-        delivery_zone: unknownZone ? null : Number(f.zone),
+        address_line: isPickup ? "Retrait en boutique" : f.address_line,
+        city: isPickup ? "Dakar" : cityFull,
+        delivery_zone: isPickup ? null : (unknownZone ? null : Number(f.zone)),
         customer_note: f.note, source: "web",
         payment_method: f.payment_method,
       }, { "Idempotency-Key": key.current });
@@ -122,7 +125,13 @@ export default function Checkout() {
           window.location.href = session.checkout_url;
         } catch (saspayError) {
           if (saspayError instanceof ApiError) {
-            toast.error(errorMessage(saspayError));
+            const msg = errorMessage(saspayError);
+            // Message plus précis pour les erreurs de configuration SasPay
+            if (saspayError.status === 400 && msg.includes("Erreur")) {
+              toast.error("Le paiement en ligne n'est pas disponible pour le moment. Veuillez choisir le paiement à la livraison ou réessayer plus tard.");
+            } else {
+              toast.error(msg);
+            }
             setBusy(false);
             return;
           }
@@ -172,14 +181,51 @@ export default function Checkout() {
 
           {/* Livraison */}
           <SectionCard icon={MapPin} title="Adresse de livraison">
-            {addresses.data && addresses.data.length > 0 && (
-              <SelectField label="Utiliser une adresse enregistrée" defaultValue="" onChange={(e) => fillAddress(e.target.value)}>
-                <option value="">Choisir une adresse enregistrée</option>
-                {addresses.data.map((a) => (
-                  <option key={a.id} value={a.id}>{a.label} : {a.line1}</option>
-                ))}
-              </SelectField>
-            )}
+            {/* Type de livraison */}
+            <div className="space-y-3 mb-4">
+              <label className="flex items-start gap-3 rounded-xl border border-line px-4 py-3 cursor-pointer hover:border-plum/50 transition-colors">
+                <input
+                  type="radio"
+                  name="delivery_type"
+                  value="delivery"
+                  checked={f.delivery_type === "delivery"}
+                  onChange={(e) => setF({ ...f, delivery_type: e.target.value as "delivery" | "pickup" })}
+                  className="mt-1 h-4 w-4 accent-plum"
+                />
+                <div className="flex-1">
+                  <p className="text-sm font-semibold text-ink">Livraison par la boutique</p>
+                  <p className="text-xs text-muted">Livraison à domicile (frais selon la zone)</p>
+                </div>
+              </label>
+
+              {settings.store_pickup_enabled && (
+                <label className="flex items-start gap-3 rounded-xl border border-line px-4 py-3 cursor-pointer hover:border-plum/50 transition-colors">
+                  <input
+                    type="radio"
+                    name="delivery_type"
+                    value="pickup"
+                    checked={f.delivery_type === "pickup"}
+                    onChange={(e) => setF({ ...f, delivery_type: e.target.value as "delivery" | "pickup" })}
+                    className="mt-1 h-4 w-4 accent-plum"
+                  />
+                  <div className="flex-1">
+                    <p className="text-sm font-semibold text-ink">Retrait en boutique</p>
+                    <p className="text-xs text-muted">Venez récupérer votre commande à la boutique (aucuns frais de livraison)</p>
+                  </div>
+                </label>
+              )}
+            </div>
+
+            {!isPickup && (
+              <>
+                {addresses.data && addresses.data.length > 0 && (
+                  <SelectField label="Utiliser une adresse enregistrée" defaultValue="" onChange={(e) => fillAddress(e.target.value)}>
+                    <option value="">Choisir une adresse enregistrée</option>
+                    {addresses.data.map((a) => (
+                      <option key={a.id} value={a.id}>{a.label} : {a.line1}</option>
+                    ))}
+                  </SelectField>
+                )}
             <TextField
               label="Adresse (rue, numéro, bâtiment…)"
               required
@@ -259,6 +305,17 @@ export default function Checkout() {
                 {settings.unknown_zone_policy || "Les frais de livraison vous seront confirmés par la boutique."}
               </div>
             )}
+              </>
+            )}
+
+            {isPickup && (
+              <div className="rounded-xl bg-success/6 px-4 py-3 text-sm">
+                <span className="text-success font-semibold">
+                  Retrait en boutique : aucun frais de livraison
+                </span>
+              </div>
+            )}
+
             <TextArea label="Note pour la boutique (facultatif)" rows={3} value={f.note} onChange={set("note")} />
           </SectionCard>
 

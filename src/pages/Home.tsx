@@ -9,7 +9,6 @@ import {
   Sparkles,
   Star,
   Truck,
-  type LucideIcon,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 
@@ -22,20 +21,8 @@ import { ErrorState } from "../components/ui/States";
 import { useApi, useDocumentTitle } from "../hooks/useApi";
 import { useSettings } from "../store/settings";
 import type {
-  Banner, BestSellersResponse, Category, Paginated, Perk, ProductListItem, Review,
+  Banner, BestSellersResponse, Category, Paginated, ProductListItem, Review,
 } from "../types";
-
-/* ── Mapping icône (clé API → composant Lucide) ────────────── */
-const PERK_ICONS: Record<string, LucideIcon> = {
-  truck:            Truck,
-  "check-circle":   CheckCircle,
-  "message-circle": MessageCircle,
-  "shield-check":   ShieldCheck,
-  sparkles:         Sparkles,
-  heart:            Heart,
-  gift:             Gift,
-  clock:            Clock,
-};
 
 /* ─────────────────────────────────────────────────────────────
    Section Univers — produits filtrés par catégorie (slug)
@@ -199,7 +186,6 @@ export default function Home() {
   /* ── Appels API ─────────────────────────────────────────────── */
   const heroes  = useApi<Banner[]>("/banners/?banner_type=hero");
   const promos  = useApi<Banner[]>("/banners/?banner_type=promo");
-  const perks   = useApi<Perk[]>("/perks/");
   const cats    = useApi<Category[]>("/categories/");
   const best    = useApi<BestSellersResponse>("/products/best-sellers/");
   const news    = useApi<Paginated<ProductListItem>>("/products/?ordering=-created_at&page_size=4");
@@ -323,36 +309,6 @@ export default function Home() {
                 />
               </div>
 
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* ══════════════════════════════════════════════════════
-          2. AVANTAGES — données API, masqués si vide
-         ══════════════════════════════════════════════════════ */}
-      {!perks.loading && perks.data && perks.data.length > 0 && (
-        <section className="border-y border-line bg-white" aria-label="Nos engagements">
-          <div className="container-page">
-            <div className="grid gap-6 py-8 sm:grid-cols-2 lg:grid-cols-4">
-              {perks.data.map((perk) => {
-                const Icon = PERK_ICONS[perk.icon] ?? Sparkles;
-                return (
-                  <div key={perk.id} className="flex items-start gap-3">
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blush">
-                      <Icon className="h-5 w-5 text-plum" aria-hidden />
-                    </div>
-                    <div>
-                      <p className="text-sm font-semibold text-ink">{perk.title}</p>
-                      {perk.description && (
-                        <p className="mt-0.5 text-xs leading-relaxed text-muted">
-                          {perk.description}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
             </div>
           </div>
         </section>

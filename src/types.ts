@@ -49,12 +49,6 @@ export interface BestSellersResponse {
   is_fallback: boolean;      // true = pas de vraies ventes, produits mis en avant ou récents
   results: ProductListItem[];
 }
-export interface Perk {
-  id: number;
-  icon: string; // clé : truck, check-circle, message-circle, shield-check, sparkles, heart, gift, clock
-  title: string;
-  description: string;
-}
 
 /* ── Avis ───────────────────────────────────────────────────── */
 export interface Review {
@@ -91,6 +85,7 @@ export interface StoreSettings {
   announcement_text: string; announcement_active: boolean;
   footer_text: string; guest_checkout_enabled: boolean;
   payment_cash_on_delivery: boolean; unknown_zone_policy: string;
+  store_pickup_enabled: boolean;
 }
 
 /* ── Commandes ──────────────────────────────────────────────── */
