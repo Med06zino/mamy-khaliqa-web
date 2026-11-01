@@ -299,7 +299,7 @@ export default function Home() {
                   alt="Sélection de produits cosmétiques Mamy Khaliqa"
                   loading="eager"
                   decoding="async"
-                  className="h-full w-full object-cover object-top "
+                  className="h-full w-full object-contain object-top "
                 />
               </div>
             </div>

@@ -23,6 +23,14 @@ export const useAuth = create<AuthState>((set) => ({
    * bloquer le rendu des routes publiques.
    */
   load: async () => {
+    // Vérifier d'abord si un cookie de session existe pour éviter un appel inutile
+    const hasSessionCookie = document.cookie.includes("sessionid");
+
+    if (!hasSessionCookie) {
+      set({ user: null, ready: true });
+      return;
+    }
+
     try {
       set({ user: await get<User>("/auth/me/"), ready: true });
     } catch (e) {
@@ -37,6 +45,20 @@ export const useAuth = create<AuthState>((set) => ({
   },
 
   login: async (email, password) => {
+    // Validation côté client avant envoi
+    if (!email || !password) {
+      throw new ApiError(400, "Veuillez remplir tous les champs.", {
+        email: !email ? ["Ce champ est requis."] : [],
+        password: !password ? ["Ce champ est requis."] : [],
+      });
+    }
+
+    if (!email.includes("@")) {
+      throw new ApiError(400, "Format d'e-mail invalide.", {
+        email: ["Entrez une adresse e-mail valide."],
+      });
+    }
+
     const user = await post<User>("/auth/login/", { email, password });
     set({ user });
     return user;

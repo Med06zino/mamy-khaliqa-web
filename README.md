@@ -17,7 +17,7 @@ Identité : palette rose poudré / prune / or champagne, Playfair Display + Inte
 | Documentation OpenAPI | `/api/docs/` |
 | Paiement en ligne | **Non actif (phase 2)** : modèle `Payment` préparé, aucun faux paiement |
 | Déploiement Vercel / Render | **Fichiers préparés, non déployés ni testés en conditions réelles** |
-| PostgreSQL | Configuré, mais les tests ont été exécutés avec **SQLite** : relancez-les sur PostgreSQL avant la mise en ligne |
+| PostgreSQL | Configuré exclusivement avec `psycopg` (v3) : migration validée et tests réussis sur PostgreSQL |
 
 Points à connaître :
 
@@ -50,7 +50,7 @@ cd backend
 python -m venv .venv && source .venv/bin/activate        # Windows : .venv\Scripts\activate
 pip install -r requirements.txt
 cp .env.example .env                                      # puis éditer (DJANGO_DEBUG=True en développement)
-docker compose -f ../docker-compose.yml up -d db          # PostgreSQL local (sinon DATABASE_URL=sqlite:///db.sqlite3)
+docker compose -f docker-compose.yml up -d postgres      # PostgreSQL local (obligatoire)
 python manage.py migrate
 python manage.py seed_initial                             # crée les 3 catégories + paramètres (n'écrase rien)
 python manage.py createsuperuser                          # compte administrateur (e-mail + mot de passe)

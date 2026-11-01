@@ -48,7 +48,7 @@ export default function Checkout() {
   const [f, setF] = useState({
     first_name: "", last_name: "", email: "", phone: "",
     address_line: "", region: "Dakar", city: "", zone: "", note: "",
-    payment_method: "saspay",
+    payment_method: "wave",
     delivery_type: "delivery", // "delivery" or "pickup"
   });
 
@@ -116,19 +116,33 @@ export default function Checkout() {
         payment_method: f.payment_method,
       }, { "Idempotency-Key": key.current });
 
-      // Si paiement SasPay, créer la session et rediriger
-      if (f.payment_method === "saspay") {
+      // 1. Paiement autonome via Wave Sénégal (Recommandé)
+      if (f.payment_method === "wave") {
+        try {
+          const session = await post<{ checkout_url: string }>(`/payments/${order.number}/wave/create/`, {});
+          clear();
+          // Redirection vers le guichet de paiement Wave officiel
+          window.location.href = session.checkout_url;
+        } catch (waveError) {
+          if (waveError instanceof ApiError) {
+            toast.error(errorMessage(waveError));
+          } else {
+            toast.error("Impossible de créer la session de paiement Wave.");
+          }
+          setBusy(false);
+          return;
+        }
+      } else if (f.payment_method === "saspay") {
+        // 2. Paiement via SasPay
         try {
           const session = await post<{ checkout_url: string }>(`/payments/${order.number}/saspay/create/`, {});
           clear();
-          // Rediriger vers la page de paiement SasPay
           window.location.href = session.checkout_url;
         } catch (saspayError) {
           if (saspayError instanceof ApiError) {
             const msg = errorMessage(saspayError);
-            // Message plus précis pour les erreurs de configuration SasPay
             if (saspayError.status === 400 && msg.includes("Erreur")) {
-              toast.error("Le paiement en ligne n'est pas disponible pour le moment. Veuillez choisir le paiement à la livraison ou réessayer plus tard.");
+              toast.error("Le paiement en ligne n'est pas disponible pour le moment. Veuillez choisir une autre méthode ou réessayer plus tard.");
             } else {
               toast.error(msg);
             }
@@ -137,7 +151,7 @@ export default function Checkout() {
           }
         }
       } else {
-        // Paiement à la livraison ou autre
+        // 3. Paiement à la livraison ou retrait
         clear();
         navigate(`/commande/confirmation/${order.number}`, { state: { order } });
       }
@@ -322,7 +336,33 @@ export default function Checkout() {
           {/* Paiement */}
           <SectionCard icon={CreditCard} title="Règlement">
             <div className="space-y-3">
-              <label className="flex items-start gap-3 rounded-xl border border-line px-4 py-3 cursor-pointer hover:border-plum/50 transition-colors">
+              {/* Option Wave Sénégal (Recommandé) */}
+              <label className={`flex items-start gap-3 rounded-xl border px-4 py-3 cursor-pointer transition-all ${
+                f.payment_method === "wave" ? "border-plum bg-plum/5 ring-1 ring-plum" : "border-line hover:border-plum/50"
+              }`}>
+                <input
+                  type="radio"
+                  name="payment_method"
+                  value="wave"
+                  checked={f.payment_method === "wave"}
+                  onChange={set("payment_method")}
+                  className="mt-1 h-4 w-4 accent-plum"
+                />
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-semibold text-ink">Payer avec Wave</p>
+                    <span className="rounded-full bg-[#1DC3EC]/15 px-2 py-0.5 text-[11px] font-bold text-[#0c7f9c]">
+                      Wave Sénégal (0% frais)
+                    </span>
+                  </div>
+                  <p className="text-xs text-muted mt-0.5">Paiement 100% autonome et sécurisé depuis votre application Wave</p>
+                </div>
+              </label>
+
+              {/* Option SasPay */}
+              <label className={`flex items-start gap-3 rounded-xl border px-4 py-3 cursor-pointer transition-all ${
+                f.payment_method === "saspay" ? "border-plum bg-plum/5 ring-1 ring-plum" : "border-line hover:border-plum/50"
+              }`}>
                 <input
                   type="radio"
                   name="payment_method"
@@ -333,12 +373,15 @@ export default function Checkout() {
                 />
                 <div className="flex-1">
                   <p className="text-sm font-semibold text-ink">Payer en ligne avec SasPay</p>
-                  <p className="text-xs text-muted">Mobile money et carte bancaire sécurisés</p>
+                  <p className="text-xs text-muted">Orange Money, Free Money &amp; Carte bancaire</p>
                 </div>
               </label>
 
+              {/* Option Paiement à la livraison */}
               {settings.payment_cash_on_delivery && (
-                <label className="flex items-start gap-3 rounded-xl border border-line px-4 py-3 cursor-pointer hover:border-plum/50 transition-colors">
+                <label className={`flex items-start gap-3 rounded-xl border px-4 py-3 cursor-pointer transition-all ${
+                  f.payment_method === "cash_on_delivery" ? "border-plum bg-plum/5 ring-1 ring-plum" : "border-line hover:border-plum/50"
+                }`}>
                   <input
                     type="radio"
                     name="payment_method"

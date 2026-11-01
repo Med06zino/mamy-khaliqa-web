@@ -120,6 +120,8 @@ export default function App() {
             <Route path="commande" element={<Checkout />} />
             <Route path="commande/confirmation/:number" element={<OrderConfirmation />} />
             <Route path="commande/paiement/succes/:number" element={<PaymentSuccess />} />
+            <Route path="commande/paiement/succes" element={<PaymentSuccess />} />
+            <Route path="paiement/succes" element={<PaymentSuccess />} />
             <Route path="a-propos" element={<About />} />
             <Route path="contact" element={<Contact />} />
             <Route path="faq" element={<Faq />} />
