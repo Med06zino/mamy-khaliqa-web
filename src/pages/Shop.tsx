@@ -7,8 +7,8 @@ import { Button } from "../components/ui/Button";
 import { SelectField, TextField } from "../components/ui/Field";
 import { Pagination } from "../components/ui/Pagination";
 import { EmptyState, ErrorState, SkeletonCard } from "../components/ui/States";
-import { useApi, useDocumentTitle } from "../hooks/useApi";
-import type { Category, Paginated, ProductListItem } from "../types";
+import { useApi, useCategories, useDocumentTitle } from "../hooks/useApi";
+import type { Paginated, ProductListItem } from "../types";
 
 const PAGE_SIZE = 12;
 
@@ -17,7 +17,7 @@ export default function Shop() {
   const [sp, setSp] = useSearchParams();
   const [filtersOpen, setFiltersOpen] = useState(false);
 
-  const cats    = useApi<Category[]>("/categories/");
+  const cats    = useCategories();
   const current = cats.data?.find((c) => c.slug === slug);
   useDocumentTitle(current?.name ?? "Boutique", current?.description || "Catalogue des produits Mamy Khaliqa.");
 

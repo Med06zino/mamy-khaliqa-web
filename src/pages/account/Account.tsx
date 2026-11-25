@@ -15,7 +15,6 @@ import { ApiError, del, errorMessage, patch, post, put } from "../../lib/api";
 import { formatDate, formatPrice } from "../../lib/format";
 import { getCommunesByRegion, SENEGAL_REGIONS } from "../../lib/senegal";
 import { useAuth } from "../../store/auth";
-import { useFavorites } from "../../store/favorites";
 import { toast } from "../../store/toast";
 import type { Address, DeliveryZone, Order, OrderListItem, Paginated, User } from "../../types";
 
@@ -64,7 +63,6 @@ export function AccountLayout() {
           <button
             onClick={async () => {
               await logout();
-              useFavorites.getState().reset();
               nav("/");
               toast.info("Vous êtes déconnectée.");
             }}

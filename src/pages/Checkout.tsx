@@ -62,6 +62,19 @@ export default function Checkout() {
     }));
   }, [user]);
 
+  // Recale la méthode de paiement sélectionnée si elle n'est plus disponible
+  useEffect(() => {
+    if (!settings.payment_wave_enabled && f.payment_method === "wave") {
+      const fallback = settings.payment_orange_money_enabled
+        ? "saspay"
+        : settings.payment_cash_on_delivery
+        ? "cash_on_delivery"
+        : "wave"; // Aucune méthode activée : on laisse wave comme valeur neutre
+      setF((p) => ({ ...p, payment_method: fallback }));
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [settings.payment_wave_enabled, settings.payment_orange_money_enabled, settings.payment_cash_on_delivery]);
+
   const set = (k: keyof typeof f) => (e: { target: { value: string } }) =>
     setF({ ...f, [k]: e.target.value });
 
@@ -103,6 +116,15 @@ export default function Checkout() {
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     if (!isPickup && !f.zone) { toast.error("Choisissez votre zone de livraison."); return; }
+    // Vérification de cohérence méthode de paiement / paramètres boutique
+    if (f.payment_method === "wave" && !settings.payment_wave_enabled) {
+      toast.error("Le paiement Wave n'est pas disponible actuellement.");
+      return;
+    }
+    if (f.payment_method === "saspay" && !settings.payment_orange_money_enabled) {
+      toast.error("SasPay n'est pas disponible actuellement.");
+      return;
+    }
     setBusy(true); setErr(null);
     const cityFull = f.city ? `${f.city}, ${f.region}` : f.region;
     try {
@@ -336,46 +358,50 @@ export default function Checkout() {
           {/* Paiement */}
           <SectionCard icon={CreditCard} title="Règlement">
             <div className="space-y-3">
-              {/* Option Wave Sénégal (Recommandé) */}
-              <label className={`flex items-start gap-3 rounded-xl border px-4 py-3 cursor-pointer transition-all ${
-                f.payment_method === "wave" ? "border-plum bg-plum/5 ring-1 ring-plum" : "border-line hover:border-plum/50"
-              }`}>
-                <input
-                  type="radio"
-                  name="payment_method"
-                  value="wave"
-                  checked={f.payment_method === "wave"}
-                  onChange={set("payment_method")}
-                  className="mt-1 h-4 w-4 accent-plum"
-                />
-                <div className="flex-1">
-                  <div className="flex items-center gap-2">
-                    <p className="text-sm font-semibold text-ink">Payer avec Wave</p>
-                    <span className="rounded-full bg-[#1DC3EC]/15 px-2 py-0.5 text-[11px] font-bold text-[#0c7f9c]">
-                      Wave Sénégal (0% frais)
-                    </span>
+              {/* Option Wave Sénégal */}
+              {settings.payment_wave_enabled && (
+                <label className={`flex items-start gap-3 rounded-xl border px-4 py-3 cursor-pointer transition-all ${
+                  f.payment_method === "wave" ? "border-plum bg-plum/5 ring-1 ring-plum" : "border-line hover:border-plum/50"
+                }`}>
+                  <input
+                    type="radio"
+                    name="payment_method"
+                    value="wave"
+                    checked={f.payment_method === "wave"}
+                    onChange={set("payment_method")}
+                    className="mt-1 h-4 w-4 accent-plum"
+                  />
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-semibold text-ink">Payer avec Wave</p>
+                      <span className="rounded-full bg-[#1DC3EC]/15 px-2 py-0.5 text-[11px] font-bold text-[#0c7f9c]">
+                        Wave Sénégal (0% frais)
+                      </span>
+                    </div>
+                    <p className="text-xs text-muted mt-0.5">Paiement 100% autonome et sécurisé depuis votre application Wave</p>
                   </div>
-                  <p className="text-xs text-muted mt-0.5">Paiement 100% autonome et sécurisé depuis votre application Wave</p>
-                </div>
-              </label>
+                </label>
+              )}
 
-              {/* Option SasPay */}
-              <label className={`flex items-start gap-3 rounded-xl border px-4 py-3 cursor-pointer transition-all ${
-                f.payment_method === "saspay" ? "border-plum bg-plum/5 ring-1 ring-plum" : "border-line hover:border-plum/50"
-              }`}>
-                <input
-                  type="radio"
-                  name="payment_method"
-                  value="saspay"
-                  checked={f.payment_method === "saspay"}
-                  onChange={set("payment_method")}
-                  className="mt-1 h-4 w-4 accent-plum"
-                />
-                <div className="flex-1">
-                  <p className="text-sm font-semibold text-ink">Payer en ligne avec SasPay</p>
-                  <p className="text-xs text-muted">Orange Money, Free Money &amp; Carte bancaire</p>
-                </div>
-              </label>
+              {/* Option SasPay (Orange Money, Free Money, Carte) */}
+              {settings.payment_orange_money_enabled && (
+                <label className={`flex items-start gap-3 rounded-xl border px-4 py-3 cursor-pointer transition-all ${
+                  f.payment_method === "saspay" ? "border-plum bg-plum/5 ring-1 ring-plum" : "border-line hover:border-plum/50"
+                }`}>
+                  <input
+                    type="radio"
+                    name="payment_method"
+                    value="saspay"
+                    checked={f.payment_method === "saspay"}
+                    onChange={set("payment_method")}
+                    className="mt-1 h-4 w-4 accent-plum"
+                  />
+                  <div className="flex-1">
+                    <p className="text-sm font-semibold text-ink">Payer en ligne avec SasPay</p>
+                    <p className="text-xs text-muted">Orange Money, Free Money &amp; Carte bancaire</p>
+                  </div>
+                </label>
+              )}
 
               {/* Option Paiement à la livraison */}
               {settings.payment_cash_on_delivery && (
@@ -397,11 +423,12 @@ export default function Checkout() {
                 </label>
               )}
 
-              {!settings.payment_cash_on_delivery && f.payment_method !== "saspay" && (
+              {/* Aucun moyen de paiement en ligne activé */}
+              {!settings.payment_wave_enabled && !settings.payment_orange_money_enabled && !settings.payment_cash_on_delivery && (
                 <div className="flex items-start gap-3 rounded-xl bg-blush px-4 py-3">
                   <CreditCard className="mt-0.5 h-4 w-4 shrink-0 text-plum" aria-hidden />
                   <p className="text-sm text-muted">
-                    Aucun paiement en ligne n'est demandé maintenant. La boutique vous contacte pour confirmer la commande et convenir du règlement.
+                    La boutique vous contactera pour convenir du règlement après confirmation de votre commande.
                   </p>
                 </div>
               )}

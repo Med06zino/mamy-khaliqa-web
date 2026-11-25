@@ -13,17 +13,16 @@ import {
 import { useState, type FormEvent } from "react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
 
-import { useApi } from "../../hooks/useApi";
+import { useCategories } from "../../hooks/useApi";
 import { useAuth } from "../../store/auth";
 import { cartCount, useCart } from "../../store/cart";
 import { useSettings } from "../../store/settings";
-import type { Category } from "../../types";
 
 export function Header() {
   const { settings } = useSettings();
   const user  = useAuth((s) => s.user);
   const count = useCart((s) => cartCount(s.items));
-  const { data: cats } = useApi<Category[]>("/categories/");
+  const { data: cats } = useCategories();
 
   const [mobileOpen, setMobileOpen] = useState(false);
   const [shopOpen,   setShopOpen]   = useState(false);

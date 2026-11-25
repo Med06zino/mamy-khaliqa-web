@@ -1,10 +1,11 @@
-import { lazy, Suspense, useEffect } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { Route, Routes, useLocation } from "react-router-dom";
 
 import { Layout } from "./components/layout/Layout";
 import { PageLoader } from "./components/PageLoader";
 import { RequireAuth } from "./components/RequireAuth";
 import { Spinner } from "./components/ui/States";
+import { isServerUnavailable, subscribeNetworkStatus } from "./lib/api";
 import { ToastHost } from "./components/ui/ToastHost";
 import Cart from "./pages/Cart";
 import Checkout from "./pages/Checkout";
@@ -76,6 +77,9 @@ export default function App() {
   const loadSettings = useSettings((s) => s.load);
   const settingsLoaded = useSettings((s) => s.loaded);
   const { show, hide, forceHide } = useLoader();
+  const [serverDown, setServerDown] = useState(isServerUnavailable());
+
+  useEffect(() => subscribeNetworkStatus(setServerDown), []);
 
   /* ── Chargement initial : auth + settings ─────────────── */
   useEffect(() => {
@@ -98,13 +102,21 @@ export default function App() {
 
   /* ── Favoris utilisateur ──────────────────────────────── */
   useEffect(() => {
+    if (!authReady) return;
     if (user) useFavorites.getState().load().catch(() => {});
-  }, [user]);
+    else useFavorites.getState().reset();
+  }, [user, authReady]);
 
   return (
     <>
       {/* Loader React (navigations, actions) */}
       <PageLoader />
+
+      {serverDown && (
+        <div role="status" className="bg-danger/10 px-4 py-2 text-center text-sm font-medium text-danger">
+          Le serveur est momentanément indisponible. Réessayez dans quelques instants.
+        </div>
+      )}
 
       <Suspense fallback={<Spinner />}>
         <NavigationLoader />

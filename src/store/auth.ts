@@ -1,6 +1,6 @@
 import { create } from "zustand";
 
-import { ApiError, get, post } from "../lib/api";
+import { ApiError, get, post, setUnauthorizedHandler } from "../lib/api";
 import type { User } from "../types";
 
 interface AuthState {
@@ -23,24 +23,10 @@ export const useAuth = create<AuthState>((set) => ({
    * bloquer le rendu des routes publiques.
    */
   load: async () => {
-    // Vérifier d'abord si un cookie de session existe pour éviter un appel inutile
-    const hasSessionCookie = document.cookie.includes("sessionid");
-
-    if (!hasSessionCookie) {
-      set({ user: null, ready: true });
-      return;
-    }
-
     try {
       set({ user: await get<User>("/auth/me/"), ready: true });
-    } catch (e) {
-      if (e instanceof ApiError && (e.status === 401 || e.status === 403)) {
-        set({ user: null, ready: true });
-      } else {
-        // Erreur réseau ou serveur : on considère l'utilisateur non connecté
-        // mais on laisse prêt pour ne pas bloquer l'interface.
-        set({ user: null, ready: true });
-      }
+    } catch {
+      set({ user: null, ready: true });
     }
   },
 
@@ -94,3 +80,7 @@ export const useAuth = create<AuthState>((set) => ({
 
   setUser: (user) => set({ user }),
 }));
+
+setUnauthorizedHandler(() => {
+  useAuth.setState({ user: null });
+});

@@ -4,6 +4,7 @@ import { useLocation, useParams } from "react-router-dom";
 import { Button, ButtonLink } from "../components/ui/Button";
 import { WhatsAppButton } from "../components/WhatsAppButton";
 import { useDocumentTitle } from "../hooks/useApi";
+import { apiBase } from "../lib/api";
 import { formatPrice } from "../lib/format";
 import { useAuth } from "../store/auth";
 import type { Order } from "../types";
@@ -22,7 +23,7 @@ export default function OrderConfirmation() {
   const downloadInvoice = async () => {
     if (!number) return;
     try {
-      const response = await fetch(`/api/v1/orders/${number}/invoice/download/`, {
+      const response = await fetch(`${apiBase}/api/v1/orders/${number}/invoice/download/`, {
         credentials: "include",
       });
       if (!response.ok) throw new Error("Erreur lors du téléchargement");

@@ -5,7 +5,6 @@ import { Link, useLocation, useNavigate, useSearchParams } from "react-router-do
 import { useDocumentTitle } from "../hooks/useApi";
 import { ApiError, errorMessage, post } from "../lib/api";
 import { useAuth } from "../store/auth";
-import { useFavorites } from "../store/favorites";
 import { toast } from "../store/toast";
 
 /* ══════════════════════════════════════════════════════════════
@@ -279,7 +278,6 @@ export function Login() {
     setErr("");
     try {
       const u = await login(email, pwd);
-      useFavorites.getState().load().catch(() => {});
       nav(u.is_staff && from === "/compte" ? "/admin" : from, { replace: true });
     } catch (er) {
       setErr(errorMessage(er));

@@ -3,10 +3,13 @@ import { useEffect, useRef, useState } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 
 import { ButtonLink } from "../components/ui/Button";
+import { ApiError, errorMessage, get, post } from "../lib/api";
 import { formatPrice } from "../lib/format";
 import { useAuth } from "../store/auth";
 import { toast } from "../store/toast";
 import type { Order } from "../types";
+
+const IS_DEV = import.meta.env.DEV;
 
 export default function PaymentSuccess() {
   const { number: paramNumber } = useParams<{ number?: string }>();
@@ -29,91 +32,80 @@ export default function PaymentSuccess() {
       return;
     }
 
-    let isMounted = true;
+    const ctrl = new AbortController();
     let pollTimeout: number | undefined;
+    let attempts = 0;
+    let wasError = false;
+    let notified = false;
+    const startedAt = Date.now();
+    const MAX_ATTEMPTS = 30;
+    const MAX_WAIT_MS = 60_000;
 
-    const executePaymentVerification = async () => {
-      // 1. Déclenchement automatique de la simulation en environnement local
-      if (isSimulated && sessionId && !simulationTriggered.current) {
-        simulationTriggered.current = true;
-        try {
-          await fetch("/api/v1/payments/wave/simulate/", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ session_id: sessionId, success: true }),
-            credentials: "include",
-          });
-        } catch (simErr) {
-          console.warn("Erreur lors de la simulation Wave:", simErr);
-        }
+    const scheduleRetry = () => {
+      attempts += 1;
+      if (attempts >= MAX_ATTEMPTS || Date.now() - startedAt >= MAX_WAIT_MS) {
+        setStatus("failed");
+        return;
       }
-
-      // 2. Vérification de l'état du paiement (polling)
-      try {
-        const response = await fetch(`/api/v1/payments/${number}/status/`, {
-          credentials: "include",
-        });
-
-        if (!response.ok) {
-          throw new Error("Erreur de statut paiement");
-        }
-
-        const data = await response.json();
-        const prov = data.payment_method === "wave" ? "Wave Sénégal" : data.payment_method === "saspay" ? "SasPay" : "En ligne";
-        setPaymentMethod(prov);
-
-        if (data.status === "paid" || data.payment_status === "paid") {
-          if (!isMounted) return;
-          setStatus("success");
-
-          // Récupération du récapitulatif de commande
-          const orderResponse = await fetch(`/api/v1/orders/${number}/`, {
-            credentials: "include",
-          });
-          if (orderResponse.ok && isMounted) {
-            const orderData = await orderResponse.json();
-            setOrder(orderData);
-          }
-        } else if (data.status === "failed" || data.status === "cancelled") {
-          if (isMounted) setStatus("failed");
-        } else {
-          // Paiement encore en attente de webhook, nouvelle tentative dans 2 secondes
-          if (isMounted) {
-            pollTimeout = window.setTimeout(executePaymentVerification, 2000);
-          }
-        }
-      } catch (err) {
-        console.error("Vérification paiement échouée:", err);
-        // Si l'endpoint générique échoue, tenter de récupérer directement la commande
-        try {
-          const fallbackResp = await fetch(`/api/v1/orders/${number}/`, {
-            credentials: "include",
-          });
-          if (fallbackResp.ok) {
-            const fallbackOrder = await fallbackResp.json();
-            if (fallbackOrder.payment_status === "paid") {
-              if (isMounted) {
-                setOrder(fallbackOrder);
-                setStatus("success");
-                return;
-              }
-            }
-          }
-        } catch {
-          // ignore
-        }
-
-        if (isMounted) {
-          toast.error("Vérification en cours auprès de la passerelle...");
-          pollTimeout = window.setTimeout(executePaymentVerification, 3000);
-        }
-      }
+      pollTimeout = window.setTimeout(verify, wasError ? 3000 : 2000);
     };
 
-    executePaymentVerification();
+    const verify = async () => {
+      if (ctrl.signal.aborted) return;
+      wasError = false;
+
+      try {
+        if (IS_DEV && isSimulated && sessionId && !simulationTriggered.current) {
+          simulationTriggered.current = true;
+          await post("/payments/wave/simulate/", { session_id: sessionId, success: true });
+        }
+
+        if (ctrl.signal.aborted) return;
+
+        const data = await get<{
+          status?: string;
+          payment_status?: string;
+          payment_method?: string;
+        }>(`/payments/${number}/status/`, ctrl.signal);
+
+        if (ctrl.signal.aborted) return;
+
+        const provider = data.payment_method === "wave"
+          ? "Wave Sénégal"
+          : data.payment_method === "saspay" ? "SasPay" : "En ligne";
+        setPaymentMethod(provider);
+
+        if (data.status === "paid" || data.payment_status === "paid") {
+          setStatus("success");
+          const orderData = await get<Order>(`/orders/${number}/`, ctrl.signal);
+          if (!ctrl.signal.aborted) setOrder(orderData);
+          return;
+        }
+
+        if (data.status === "failed" || data.status === "cancelled") {
+          setStatus("failed");
+          return;
+        }
+      } catch (e) {
+        if (ctrl.signal.aborted) return;
+        if (e instanceof ApiError && e.status === 0) {
+          setStatus("failed");
+          return;
+        }
+        wasError = true;
+        if (!notified) {
+          toast.error(errorMessage(e));
+          notified = true;
+        }
+      }
+
+      if (!ctrl.signal.aborted) scheduleRetry();
+    };
+
+    verify();
 
     return () => {
-      isMounted = false;
+      ctrl.abort();
       if (pollTimeout) clearTimeout(pollTimeout);
     };
   }, [number, isSimulated, sessionId]);

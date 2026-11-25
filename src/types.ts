@@ -84,7 +84,10 @@ export interface StoreSettings {
   facebook_url: string; tiktok_url: string;
   announcement_text: string; announcement_active: boolean;
   footer_text: string; guest_checkout_enabled: boolean;
-  payment_cash_on_delivery: boolean; unknown_zone_policy: string;
+  payment_cash_on_delivery: boolean;
+  payment_wave_enabled: boolean;
+  payment_orange_money_enabled: boolean;
+  unknown_zone_policy: string;
   store_pickup_enabled: boolean;
 }
 

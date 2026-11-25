@@ -1,5 +1,6 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { ApiError, errorMessage, get, post, setUnauthorizedHandler } from "../lib/api";
 import { formatPrice } from "../lib/format";
 import { buildWhatsAppMessage, whatsappUrl } from "../lib/whatsapp";
 import { cartSubtotal, useCart } from "../store/cart";
@@ -50,5 +51,56 @@ describe("panier", () => {
     expect(useCart.getState().items[0].quantity).toBe(3);
     useCart.getState().remove(key);
     expect(useCart.getState().items).toHaveLength(0);
+  });
+});
+
+describe("api", () => {
+  const jsonResponse = (status: number, data: unknown) => ({
+    ok: status >= 200 && status < 300,
+    status,
+    headers: {
+      get: (key: string) => key.toLowerCase() === "content-type" ? "application/json" : null,
+    },
+    json: async () => data,
+  }) as Response;
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    setUnauthorizedHandler(null);
+    document.cookie = "csrftoken=; max-age=0";
+  });
+
+  it("envoie le jeton CSRF renvoyé par /auth/csrf/ sur les mutations", async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(jsonResponse(200, { csrfToken: "token-123" }))
+      .mockResolvedValueOnce(jsonResponse(201, { id: 1 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await post("/favorites/", { product_id: 1 });
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    const init = fetchMock.mock.calls[1][1] as RequestInit;
+    expect(new Headers(init.headers).get("X-CSRFToken")).toBe("token-123");
+  });
+
+  it("invalide la session sur un 403 d'authentification", async () => {
+    const handler = vi.fn();
+    setUnauthorizedHandler(handler);
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(
+      jsonResponse(403, { detail: "Informations d'authentification non fournies.", errors: {} }),
+    ));
+
+    await expect(get("/favorites/")).rejects.toBeInstanceOf(ApiError);
+    expect(handler).toHaveBeenCalledWith("/favorites/");
+  });
+
+  it("affiche un message réseau explicite et suspend les appels suivants", async () => {
+    const fetchMock = vi.fn().mockRejectedValue(new TypeError("Failed to fetch"));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const error = await get("/settings/").catch((e) => e);
+    expect(errorMessage(error)).toContain("Impossible de joindre le serveur");
+    await expect(get("/settings/")).rejects.toMatchObject({ status: 0 });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });
